@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { watchEvents, createEvent, deleteEvent, expandEvents } from "@/lib/data";
+import { watchEvents, createEvent, deleteEvent, updateEvent, expandEvents } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import Sheet from "./Sheet";
 
@@ -114,6 +114,10 @@ export default function CalendarView({ familyId, user }) {
         <EventSheet
           event={editing}
           onClose={() => setEditing(null)}
+          onSave={async (data) => {
+            await updateEvent(familyId, editing.id, data, user);
+            setEditing(null);
+          }}
           onDelete={async () => {
             await deleteEvent(familyId, editing.id, editing.title, user);
             setEditing(null);
@@ -448,21 +452,19 @@ function EventRow({ event, onClick, showDate }) {
     <div
       onClick={onClick}
       data-tappable
-      data-card
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "14px 16px",
         background: "var(--surface)",
-        borderRadius: 14,
+        borderRadius: 12,
         border: "1px solid var(--line)",
         marginBottom: 6,
         cursor: "pointer",
-        boxShadow: "var(--shadow-card)",
       }}
     >
-      <div style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: event.color, flexShrink: 0, boxShadow: `0 0 0 3px ${event.color}22` }} />
+      <div style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: event.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {event.title}
@@ -481,7 +483,7 @@ function EventRow({ event, onClick, showDate }) {
 
 function EventSheet({ event, defaultDate, onClose, onSave, onDelete }) {
   const [title, setTitle] = useState(event?.title || "");
-  const [date, setDate] = useState(event?._date || event?.date || defaultDate || "");
+  const [date, setDate] = useState(event?.date || event?._date || defaultDate || "");
   const [time, setTime] = useState(event?.time || "");
   const [color, setColor] = useState(event?.color || COLORS[0].value);
   const [recurrence, setRecurrence] = useState(event?.recurrence || "");
@@ -502,41 +504,47 @@ function EventSheet({ event, defaultDate, onClose, onSave, onDelete }) {
   return (
     <Sheet onClose={onClose}>
       <h3 className="serif" style={{ fontSize: 22, marginBottom: 20 }}>
-        {isEdit ? "Händelse" : "Ny händelse"}
+        {isEdit ? "Redigera händelse" : "Ny händelse"}
       </h3>
+
+      <label style={fieldLabel}>Vad händer?</label>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="t.ex. Tandläkartid"
+        autoFocus={!isEdit}
+        style={sheetInput}
+      />
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <div style={{ flex: 1 }}>
+          <label style={fieldLabel}>Datum</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{ ...sheetInput, marginBottom: 0 }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={fieldLabel}>Tid</label>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            style={{ ...sheetInput, marginBottom: 0 }}
+          />
+        </div>
+      </div>
+
+      {isEdit && event.recurrence && (
+        <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, marginTop: -4 }}>
+          🔁 Ändringar gäller hela serien.
+        </p>
+      )}
 
       {!isEdit && (
         <>
-          <label style={fieldLabel}>Vad händer?</label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="t.ex. Tandläkartid"
-            autoFocus
-            style={sheetInput}
-          />
-
-          <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>Datum</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={{ ...sheetInput, marginBottom: 0 }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>Tid</label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                style={{ ...sheetInput, marginBottom: 0 }}
-              />
-            </div>
-          </div>
-
           <label style={fieldLabel}>Återkommer</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
             {RECURRENCE_OPTIONS.map((opt) => (
@@ -558,71 +566,48 @@ function EventSheet({ event, defaultDate, onClose, onSave, onDelete }) {
               </button>
             ))}
           </div>
-
-          <label style={fieldLabel}>Färg</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-            {COLORS.map((c) => (
-              <button
-                key={c.value}
-                onClick={() => setColor(c.value)}
-                aria-label={c.name}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  border: color === c.value ? "3px solid var(--surface)" : "3px solid transparent",
-                  boxShadow: color === c.value ? `0 0 0 2px ${c.value}` : "none",
-                  background: c.value,
-                  cursor: "pointer",
-                }}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={handleSave}
-            style={{ width: "100%", background: "var(--coral)", color: "white", border: "none", borderRadius: 12, padding: 14, fontWeight: 600, fontSize: 15, cursor: "pointer" }}
-          >
-            Spara händelse
-          </button>
         </>
       )}
 
-      {isEdit && (
-        <>
-          <div style={{ background: "var(--surface-soft)", borderRadius: 14, padding: 18, marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              <div style={{ width: 4, height: 36, borderRadius: 4, background: event.color }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{event.title}</div>
-                <div style={{ fontSize: 14, color: "var(--muted)", marginTop: 2 }}>
-                  {formatEventDate(event._date || event.date)}
-                  {event.time && ` · ${event.time}`}
-                </div>
-              </div>
-            </div>
-            {event.recurrence && (
-              <div style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                🔁 {{ daily: "Varje dag", weekly: "Varje vecka", monthly: "Varje månad", yearly: "Varje år" }[event.recurrence]}
-              </div>
-            )}
-            <div style={{ fontSize: 12, color: "var(--muted-soft)", marginTop: 8 }}>
-              Tillagd av {event.by}
-            </div>
-          </div>
-
+      <label style={fieldLabel}>Färg</label>
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        {COLORS.map((c) => (
           <button
-            onClick={async () => {
-              if (confirm(event.recurrence ? "Ta bort hela serien?" : "Ta bort händelsen?")) {
-                await onDelete();
-                toast.show("Borttagen");
-              }
+            key={c.value}
+            onClick={() => setColor(c.value)}
+            aria-label={c.name}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              border: color === c.value ? "3px solid var(--surface)" : "3px solid transparent",
+              boxShadow: color === c.value ? `0 0 0 2px ${c.value}` : "none",
+              background: c.value,
+              cursor: "pointer",
             }}
-            style={{ width: "100%", background: "var(--coral-soft)", color: "var(--coral)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, fontWeight: 600, fontSize: 14, cursor: "pointer" }}
-          >
-            🗑️ Ta bort
-          </button>
-        </>
+          />
+        ))}
+      </div>
+
+      <button
+        onClick={handleSave}
+        style={{ width: "100%", background: "var(--coral)", color: "white", border: "none", borderRadius: 12, padding: 14, fontWeight: 600, fontSize: 15, cursor: "pointer", marginBottom: isEdit ? 10 : 0 }}
+      >
+        {isEdit ? "Spara ändringar" : "Spara händelse"}
+      </button>
+
+      {isEdit && (
+        <button
+          onClick={async () => {
+            if (confirm(event.recurrence ? "Ta bort hela serien?" : "Ta bort händelsen?")) {
+              await onDelete();
+              toast.show("Borttagen");
+            }
+          }}
+          style={{ width: "100%", background: "var(--coral-soft)", color: "var(--coral)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+        >
+          🗑️ Ta bort
+        </button>
       )}
     </Sheet>
   );
