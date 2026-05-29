@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { watchUserFamily, watchUserFamilies, switchFamily, createFamily, joinFamily } from "@/lib/data";
+import { watchUserFamily, watchUserFamilies, switchFamily, createFamily, joinFamily, watchMessages } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import { nameColor } from "@/lib/colors";
 import Login from "@/components/Login";
@@ -13,6 +13,7 @@ import Lists from "@/components/Lists";
 import CalendarView from "@/components/CalendarView";
 import Family from "@/components/Family";
 import ActivityFeed from "@/components/ActivityFeed";
+import Chat from "@/components/Chat";
 import Sheet from "@/components/Sheet";
 import Search from "@/components/Search";
 
@@ -20,6 +21,7 @@ const TABS = [
   { name: "Hem", icon: "🏡" },
   { name: "Listor", icon: "📋" },
   { name: "Kalender", icon: "📅" },
+  { name: "Chatt", icon: "💬" },
   { name: "Aktivitet", icon: "🔔" },
   { name: "Familj", icon: "👥" },
 ];
@@ -32,6 +34,8 @@ export default function Home() {
   const [tab, setTab] = useState(0);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [lastMessage, setLastMessage] = useState(null);
+  const [lastSeenAt, setLastSeenAt] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -43,6 +47,30 @@ export default function Home() {
     const u2 = watchUserFamilies(user.uid, setFamilies);
     return () => { u1(); u2(); };
   }, [user]);
+
+  // Lyssna på senaste meddelandet för olästa-pricken
+  useEffect(() => {
+    if (!familyId || typeof familyId !== "string") {
+      setLastMessage(null);
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`chat-seen-${familyId}`);
+      setLastSeenAt(saved ? Number(saved) : 0);
+    } catch (e) {}
+    const unsub = watchMessages(familyId, (msgs) => {
+      setLastMessage(msgs.length ? msgs[msgs.length - 1] : null);
+    }, 1);
+    return () => unsub();
+  }, [familyId]);
+
+  const markChatSeen = (seconds) => {
+    const ts = seconds || Date.now() / 1000;
+    setLastSeenAt(ts);
+    try {
+      if (familyId) localStorage.setItem(`chat-seen-${familyId}`, String(ts));
+    } catch (e) {}
+  };
 
   if (loading) return <Centered><div className="spinner" /></Centered>;
   if (!user) return <Login />;
@@ -56,6 +84,13 @@ export default function Home() {
   // Användaren har lämnat sin senaste familj men finns kvar i andra
   const activeFamily = families.find((f) => f.id === familyId) || families[0];
   if (!activeFamily) return <Onboarding user={user} />;
+
+  // Oläst chatt: senaste meddelandet är nyare än senast sett, och inte från mig själv
+  const chatUnread =
+    lastMessage &&
+    lastMessage.senderId !== user.uid &&
+    (lastMessage.at?.seconds || 0) > lastSeenAt &&
+    tab !== 3;
 
   return (
     <div
@@ -75,15 +110,27 @@ export default function Home() {
         onSearchClick={() => setSearchOpen(true)}
       />
 
-      <div style={{ padding: "20px 18px 110px", animation: "slideIn 0.25s ease" }}>
-        {tab === 0 && <Dashboard familyId={activeFamily.id} family={activeFamily} user={user} onOpenTab={setTab} />}
-        {tab === 1 && <Lists familyId={activeFamily.id} user={user} family={activeFamily} />}
-        {tab === 2 && <CalendarView familyId={activeFamily.id} user={user} />}
-        {tab === 3 && <ActivityFeed familyId={activeFamily.id} />}
-        {tab === 4 && <Family familyId={activeFamily.id} family={activeFamily} user={user} onSignOut={signOut} />}
-      </div>
+      {tab === 3 ? (
+        <Chat familyId={activeFamily.id} user={user} onSeen={markChatSeen} />
+      ) : (
+        <div style={{ padding: "20px 18px 110px", animation: "slideIn 0.25s ease" }}>
+          {tab === 0 && <Dashboard familyId={activeFamily.id} family={activeFamily} user={user} onOpenTab={setTab} />}
+          {tab === 1 && <Lists familyId={activeFamily.id} user={user} family={activeFamily} />}
+          {tab === 2 && <CalendarView familyId={activeFamily.id} user={user} />}
+          {tab === 4 && <ActivityFeed familyId={activeFamily.id} />}
+          {tab === 5 && <Family familyId={activeFamily.id} family={activeFamily} user={user} onSignOut={signOut} />}
+        </div>
+      )}
 
-      <TabBar tabs={TABS} active={tab} onChange={setTab} />
+      <TabBar
+        tabs={TABS}
+        active={tab}
+        onChange={(t) => {
+          if (t === 3 && lastMessage) markChatSeen(lastMessage.at?.seconds);
+          setTab(t);
+        }}
+        badgeIndex={chatUnread ? 3 : -1}
+      />
 
       {switcherOpen && (
         <FamilySwitcher
@@ -225,7 +272,7 @@ function Avatar({ user }) {
   );
 }
 
-function TabBar({ tabs, active, onChange }) {
+function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
   return (
     <div
       style={{
@@ -246,6 +293,7 @@ function TabBar({ tabs, active, onChange }) {
     >
       {tabs.map((t, i) => {
         const isActive = active === i;
+        const showBadge = i === badgeIndex;
         return (
           <button
             key={t.name}
@@ -262,15 +310,29 @@ function TabBar({ tabs, active, onChange }) {
               padding: "6px 0",
             }}
           >
-            <span style={{ fontSize: 19, filter: isActive ? "none" : "grayscale(0.4)", opacity: isActive ? 1 : 0.5 }}>
+            <span style={{ position: "relative", fontSize: 19, filter: isActive ? "none" : "grayscale(0.4)", opacity: isActive ? 1 : 0.5 }}>
               {t.icon}
+              {showBadge && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -5,
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "var(--coral)",
+                    border: "1.5px solid var(--tab-bar)",
+                  }}
+                />
+              )}
             </span>
             <span
               style={{
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: isActive ? 700 : 500,
                 color: isActive ? "var(--coral)" : "var(--muted)",
-                letterSpacing: 0.2,
+                letterSpacing: 0.1,
               }}
             >
               {t.name}

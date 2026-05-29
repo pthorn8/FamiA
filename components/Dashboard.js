@@ -4,12 +4,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { watchLists, watchEvents, watchActivity, expandEvents, toggleListItem } from "@/lib/data";
 import { memberColor, nameColor } from "@/lib/colors";
+import Sheet from "./Sheet";
 
 export default function Dashboard({ familyId, family, user, onOpenTab }) {
   const [lists, setLists] = useState([]);
   const [events, setEvents] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState(null); // "todo" | "today" | "due" | null
 
   useEffect(() => {
     let count = 0;
@@ -66,6 +68,28 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
     return { activeItems, totalItems, lists: lists.length };
   }, [lists]);
 
+  // Alla aktiva (ej klara) uppgifter, för "Att göra"-detaljen
+  const allActive = useMemo(() => {
+    const items = [];
+    for (const list of lists) {
+      for (const item of list.items || []) {
+        if (!item.done) {
+          items.push({ ...item, listId: list.id, listName: list.name, listIcon: list.icon });
+        }
+      }
+    }
+    // Sortera: förfallodatum först, sen de utan datum
+    return items.sort((a, b) => {
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    });
+  }, [lists]);
+
+  const toggleItem = (item) =>
+    toggleListItem(familyId, lists.find((l) => l.id === item.listId), item.id, user);
+
   const greeting = getGreeting(user);
 
   if (loading) {
@@ -92,9 +116,9 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
 
       {/* Snabb-statistik */}
       <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-        <StatCard label="Att göra" value={stats.activeItems} icon="📋" />
-        <StatCard label="Idag" value={todayEvents.length} icon="📅" />
-        <StatCard label="Förfaller" value={todoToday.length} icon="⏰" highlight={todoToday.length > 0} />
+        <StatCard label="Att göra" value={stats.activeItems} icon="📋" onClick={() => setDetail("todo")} />
+        <StatCard label="Idag" value={todayEvents.length} icon="📅" onClick={() => setDetail("today")} />
+        <StatCard label="Förfaller" value={todoToday.length} icon="⏰" highlight={todoToday.length > 0} onClick={() => setDetail("due")} />
       </div>
 
       {/* Idag-händelser */}
@@ -146,7 +170,7 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
 
       {/* Senaste aktivitet */}
       {activity.length > 0 && (
-        <Section title="Senaste händer" onSeeAll={() => onOpenTab(3)}>
+        <Section title="Senaste händer" onSeeAll={() => onOpenTab(4)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {activity.slice(0, 3).map((item) => (
               <ActivityPreview key={item.id} item={item} />
@@ -171,6 +195,73 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
           </button>
         </div>
       )}
+
+      {detail && (
+        <DetailSheet
+          type={detail}
+          allActive={allActive}
+          todayEvents={todayEvents}
+          dueItems={todoToday}
+          onToggle={toggleItem}
+          onClose={() => setDetail(null)}
+          onOpenTab={(t) => { setDetail(null); onOpenTab(t); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DetailSheet({ type, allActive, todayEvents, dueItems, onToggle, onClose, onOpenTab }) {
+  const config = {
+    todo: { title: "Att göra", icon: "📋", empty: "Inga aktiva uppgifter. Allt är klart!", tab: 1 },
+    today: { title: "Idag", icon: "📅", empty: "Inga händelser idag.", tab: 2 },
+    due: { title: "Förfaller", icon: "⏰", empty: "Inget förfaller just nu.", tab: 1 },
+  }[type];
+
+  return (
+    <Sheet onClose={onClose}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <span style={{ fontSize: 24 }}>{config.icon}</span>
+        <h3 className="serif" style={{ fontSize: 22 }}>{config.title}</h3>
+      </div>
+
+      {type === "today" ? (
+        todayEvents.length === 0 ? (
+          <EmptyDetail text={config.empty} />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {todayEvents.map((evt, i) => <EventRow key={`${evt.id}-${i}`} event={evt} />)}
+          </div>
+        )
+      ) : (
+        (() => {
+          const items = type === "todo" ? allActive : dueItems;
+          if (items.length === 0) return <EmptyDetail text={config.empty} />;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {items.map((item) => (
+                <TodoRow key={`${item.listId}-${item.id}`} item={item} onToggle={() => onToggle(item)} />
+              ))}
+            </div>
+          );
+        })()
+      )}
+
+      <button
+        onClick={() => onOpenTab(config.tab)}
+        style={{ width: "100%", marginTop: 16, background: "var(--surface-soft)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+      >
+        Öppna {config.tab === 1 ? "listor" : "kalender"} →
+      </button>
+    </Sheet>
+  );
+}
+
+function EmptyDetail({ text }) {
+  return (
+    <div style={{ padding: "30px 20px", textAlign: "center", color: "var(--muted)" }}>
+      <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.5 }}>✨</div>
+      <div style={{ fontSize: 14, maxWidth: 240, margin: "0 auto" }}>{text}</div>
     </div>
   );
 }
@@ -196,9 +287,11 @@ function Section({ title, onSeeAll, children }) {
   );
 }
 
-function StatCard({ label, value, icon, highlight }) {
+function StatCard({ label, value, icon, highlight, onClick }) {
   return (
-    <div
+    <button
+      onClick={onClick}
+      data-tappable
       style={{
         flex: 1,
         background: highlight ? "var(--coral-soft)" : "var(--surface)",
@@ -206,6 +299,8 @@ function StatCard({ label, value, icon, highlight }) {
         borderRadius: 14,
         padding: "12px 10px",
         textAlign: "center",
+        cursor: "pointer",
+        fontFamily: "inherit",
       }}
     >
       <div style={{ fontSize: 20, marginBottom: 2 }}>{icon}</div>
@@ -215,7 +310,7 @@ function StatCard({ label, value, icon, highlight }) {
       <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600, letterSpacing: 0.3 }}>
         {label}
       </div>
-    </div>
+    </button>
   );
 }
 
