@@ -10,8 +10,9 @@ export default function Chat({ familyId, user, onSeen }) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [inputBottom, setInputBottom] = useState(70);
   const bottomRef = useRef(null);
-  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const unsub = watchMessages(familyId, (m) => {
@@ -21,7 +22,6 @@ export default function Chat({ familyId, user, onSeen }) {
     return () => unsub();
   }, [familyId]);
 
-  // Markera som sett när chatten är öppen och nya meddelanden kommer
   useEffect(() => {
     if (messages.length > 0 && onSeen) {
       const last = messages[messages.length - 1];
@@ -29,10 +29,25 @@ export default function Chat({ familyId, user, onSeen }) {
     }
   }, [messages, onSeen]);
 
-  // Skrolla till botten när nya meddelanden kommer
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Håll skrivfältet ovanför tangentbordet på iOS
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const onUpdate = () => {
+      const offset = window.innerHeight - vv.height - vv.offsetTop;
+      setInputBottom(Math.max(70, offset + 8));
+    };
+    vv.addEventListener("resize", onUpdate);
+    vv.addEventListener("scroll", onUpdate);
+    return () => {
+      vv.removeEventListener("resize", onUpdate);
+      vv.removeEventListener("scroll", onUpdate);
+    };
+  }, []);
 
   const handleSend = async () => {
     const trimmed = text.trim();
@@ -42,17 +57,23 @@ export default function Chat({ familyId, user, onSeen }) {
     try {
       await sendMessage(familyId, user, trimmed);
     } catch (e) {
-      setText(trimmed); // återställ vid fel
+      setText(trimmed);
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div style={{ height: "calc(100dvh - 150px)", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "relative", height: "calc(100svh - 82px)", overflow: "hidden" }}>
+      {/* Meddelandelistan */}
       <div
-        ref={scrollRef}
-        style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column" }}
+        style={{
+          height: "100%",
+          overflowY: "auto",
+          padding: "16px 16px 120px",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -64,9 +85,7 @@ export default function Chat({ familyId, user, onSeen }) {
           <div style={{ margin: "auto", textAlign: "center", color: "var(--muted)", padding: 30 }}>
             <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.5 }}>💬</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>Inga meddelanden än</div>
-            <div style={{ fontSize: 14, maxWidth: 260, margin: "0 auto" }}>
-              Skriv något till familjen nedan!
-            </div>
+            <div style={{ fontSize: 14 }}>Skriv något till familjen nedan!</div>
           </div>
         ) : (
           messages.map((msg, i) => {
@@ -92,18 +111,26 @@ export default function Chat({ familyId, user, onSeen }) {
         <div ref={bottomRef} />
       </div>
 
+      {/* Skrivfält - fast ovanför tangentbordet */}
       <div
         style={{
-          flexShrink: 0,
+          position: "fixed",
+          bottom: inputBottom,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: 480,
           padding: "10px 14px 12px",
           borderTop: "1px solid var(--line)",
           background: "var(--surface)",
           display: "flex",
           gap: 8,
           alignItems: "flex-end",
+          zIndex: 200,
         }}
       >
         <textarea
+          ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -140,7 +167,7 @@ export default function Chat({ familyId, user, onSeen }) {
             borderRadius: "50%",
             width: 42,
             height: 42,
-            fontSize: 18,
+            fontSize: 20,
             cursor: text.trim() ? "pointer" : "default",
             flexShrink: 0,
             display: "flex",
@@ -165,7 +192,7 @@ function MessageBubble({ msg, isMine, showSender, isLastInGroup }) {
           {msg.senderName}
         </div>
       )}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "78%" }}>
+      <div style={{ maxWidth: "78%" }}>
         <div
           style={{
             background: isMine ? "var(--coral)" : "var(--surface)",
