@@ -14,6 +14,7 @@ import CalendarView from "@/components/CalendarView";
 import Family from "@/components/Family";
 import ActivityFeed from "@/components/ActivityFeed";
 import Sheet from "@/components/Sheet";
+import Search from "@/components/Search";
 
 const TABS = [
   { name: "Hem", icon: "🏡" },
@@ -30,6 +31,7 @@ export default function Home() {
   const [families, setFamilies] = useState([]);
   const [tab, setTab] = useState(0);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -70,6 +72,7 @@ export default function Home() {
         family={activeFamily}
         familyCount={families.length}
         onSwitchClick={() => setSwitcherOpen(true)}
+        onSearchClick={() => setSearchOpen(true)}
       />
 
       <div style={{ padding: "20px 18px 110px", animation: "slideIn 0.25s ease" }}>
@@ -95,11 +98,19 @@ export default function Home() {
           onClose={() => setSwitcherOpen(false)}
         />
       )}
+
+      {searchOpen && (
+        <Search
+          familyId={activeFamily.id}
+          onClose={() => setSearchOpen(false)}
+          onJumpToTab={setTab}
+        />
+      )}
     </div>
   );
 }
 
-function Header({ user, family, familyCount, onSwitchClick }) {
+function Header({ user, family, familyCount, onSwitchClick, onSearchClick }) {
   return (
     <div
       style={{
@@ -148,6 +159,26 @@ function Header({ user, family, familyCount, onSwitchClick }) {
           )}
         </button>
       </div>
+      <button
+        onClick={onSearchClick}
+        aria-label="Sök"
+        style={{
+          background: "rgba(255,255,255,0.12)",
+          border: "none",
+          borderRadius: "50%",
+          width: 38,
+          height: 38,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 17,
+          cursor: "pointer",
+          color: "var(--header-text)",
+          flexShrink: 0,
+        }}
+      >
+        🔍
+      </button>
       <Avatar user={user} />
     </div>
   );

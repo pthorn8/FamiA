@@ -1,7 +1,7 @@
 // components/Lists.js
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   watchLists,
   createList,
@@ -222,12 +222,19 @@ function ListDetail({ familyId, list, family, user, onBack }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {sortedItems.notDone.map((item) => (
-          <ItemRow
+          <Swipeable
             key={item.id}
-            item={item}
-            onToggle={() => toggleListItem(familyId, list, item.id, user)}
-            onEdit={() => setEditingItem(item)}
-          />
+            onDelete={async () => {
+              await deleteListItem(familyId, list, item.id, user);
+              toast.show("Borttagen");
+            }}
+          >
+            <ItemRow
+              item={item}
+              onToggle={() => toggleListItem(familyId, list, item.id, user)}
+              onEdit={() => setEditingItem(item)}
+            />
+          </Swipeable>
         ))}
         {sortedItems.done.length > 0 && (
           <div style={{ fontSize: 11, color: "var(--muted)", padding: "16px 4px 4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -244,13 +251,20 @@ function ListDetail({ familyId, list, family, user, onBack }) {
           </div>
         )}
         {sortedItems.done.map((item) => (
-          <ItemRow
+          <Swipeable
             key={item.id}
-            item={item}
-            done
-            onToggle={() => toggleListItem(familyId, list, item.id, user)}
-            onEdit={() => setEditingItem(item)}
-          />
+            onDelete={async () => {
+              await deleteListItem(familyId, list, item.id, user);
+              toast.show("Borttagen");
+            }}
+          >
+            <ItemRow
+              item={item}
+              done
+              onToggle={() => toggleListItem(familyId, list, item.id, user)}
+              onEdit={() => setEditingItem(item)}
+            />
+          </Swipeable>
         ))}
         {list.items.length === 0 && (
           <EmptyState emoji="✏️" title="Listan är tom" desc="Lägg till första saken ovan." compact />
@@ -747,3 +761,96 @@ const menuItem = {
   cursor: "pointer",
   color: "var(--ink)",
 };
+
+// === Svep för att ta bort ===
+function Swipeable({ children, onDelete }) {
+  const [tx, setTx] = useState(0);
+  const [snapping, setSnapping] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const startX = useRef(null);
+  const startY = useRef(null);
+  const direction = useRef(null); // "h" | "v" | null
+
+  const onStart = (e) => {
+    if (removing) return;
+    const t = e.touches[0];
+    startX.current = t.clientX;
+    startY.current = t.clientY;
+    direction.current = null;
+    setSnapping(false);
+  };
+
+  const onMove = (e) => {
+    if (startX.current == null || removing) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX.current;
+    const dy = t.clientY - startY.current;
+
+    // Bestäm riktning vid första rörelsen över ~8px
+    if (direction.current == null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      direction.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+    }
+
+    if (direction.current !== "h") return;
+    // Tillåt bara svep åt vänster
+    setTx(Math.min(0, Math.max(dx, -160)));
+  };
+
+  const onEnd = () => {
+    if (removing) return;
+    setSnapping(true);
+    if (tx < -90) {
+      // Tillräckligt långt svep, ta bort
+      setRemoving(true);
+      setTx(-window.innerWidth);
+      setTimeout(() => {
+        onDelete();
+      }, 220);
+    } else {
+      setTx(0);
+    }
+    startX.current = null;
+    startY.current = null;
+    direction.current = null;
+  };
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
+      {/* Bakgrund (visas när man drar) */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "var(--coral)",
+          borderRadius: 12,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingRight: 22,
+          color: "white",
+          fontSize: 14,
+          fontWeight: 600,
+          opacity: Math.min(1, Math.abs(tx) / 60),
+          pointerEvents: "none",
+        }}
+      >
+        🗑️ Ta bort
+      </div>
+      {/* Förgrund (innehållet) */}
+      <div
+        onTouchStart={onStart}
+        onTouchMove={onMove}
+        onTouchEnd={onEnd}
+        onTouchCancel={onEnd}
+        style={{
+          transform: `translateX(${tx}px)`,
+          transition: snapping ? "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
+          position: "relative",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}

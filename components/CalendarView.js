@@ -15,6 +15,7 @@ const COLORS = [
 ];
 const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
 const WEEKDAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
+const WEEKDAYS_LONG = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
 const RECURRENCE_OPTIONS = [
   { value: "", label: "En gång" },
   { value: "daily", label: "Varje dag" },
@@ -23,15 +24,38 @@ const RECURRENCE_OPTIONS = [
   { value: "yearly", label: "Varje år" },
 ];
 
+// Få måndagen i veckan för ett givet datum
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day); // måndag = start
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 export default function CalendarView({ familyId, user }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cursor, setCursor] = useState(() => {
+  const [view, setView] = useState("month"); // "month" | "week"
+  const [monthCursor, setMonthCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
+  const [newDate, setNewDate] = useState(null);
   const [editing, setEditing] = useState(null);
 
   useEffect(() => {
@@ -39,14 +63,98 @@ export default function CalendarView({ familyId, user }) {
     return () => unsub();
   }, [familyId]);
 
+  const today = new Date();
+  const todayISOStr = isoDate(today);
+
+  return (
+    <div>
+      {/* Toggle mellan månad/vecka */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+        <div style={{ display: "inline-flex", background: "var(--surface-soft)", borderRadius: 10, padding: 3, border: "1px solid var(--line)" }}>
+          <ToggleBtn active={view === "month"} onClick={() => setView("month")}>Månad</ToggleBtn>
+          <ToggleBtn active={view === "week"} onClick={() => setView("week")}>Vecka</ToggleBtn>
+        </div>
+      </div>
+
+      {view === "month" ? (
+        <MonthView
+          events={events}
+          loading={loading}
+          cursor={monthCursor}
+          setCursor={setMonthCursor}
+          selected={selected}
+          setSelected={setSelected}
+          onAdd={(date) => { setNewDate(date); setShowNew(true); }}
+          onEdit={setEditing}
+        />
+      ) : (
+        <WeekView
+          events={events}
+          loading={loading}
+          weekStart={weekStart}
+          setWeekStart={setWeekStart}
+          onAdd={(date) => { setNewDate(date); setShowNew(true); }}
+          onEdit={setEditing}
+        />
+      )}
+
+      {showNew && (
+        <EventSheet
+          defaultDate={newDate || todayISOStr}
+          onClose={() => { setShowNew(false); setNewDate(null); }}
+          onSave={async (event) => {
+            await createEvent(familyId, event, user);
+            setShowNew(false);
+            setNewDate(null);
+          }}
+        />
+      )}
+
+      {editing && (
+        <EventSheet
+          event={editing}
+          onClose={() => setEditing(null)}
+          onDelete={async () => {
+            await deleteEvent(familyId, editing.id, editing.title, user);
+            setEditing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ToggleBtn({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: active ? "var(--surface)" : "transparent",
+        color: active ? "var(--ink)" : "var(--muted)",
+        border: "none",
+        borderRadius: 8,
+        padding: "7px 18px",
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: "pointer",
+        boxShadow: active ? "var(--shadow-sm)" : "none",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// === MÅNADSVY ===
+
+function MonthView({ events, loading, cursor, setCursor, selected, setSelected, onAdd, onEdit }) {
   const { year, month } = cursor;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
-  const todayISOStr = today.toISOString().slice(0, 10);
+  const todayISOStr = isoDate(today);
 
-  // Expandera återkommande händelser för den synliga månaden
   const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
   const expanded = useMemo(() => expandEvents(events, monthStart, monthEnd), [events, monthStart, monthEnd]);
@@ -68,14 +176,13 @@ export default function CalendarView({ familyId, user }) {
     setSelected(d.getDate());
   };
 
-  // Kommande händelser från idag och 30 dagar framåt
   const upcoming = useMemo(() => {
     const from = todayISOStr;
     const toDate = new Date();
     toDate.setDate(toDate.getDate() + 30);
     const to = toDate.toISOString().slice(0, 10);
-    const expandedAll = expandEvents(events, from, to);
-    return expandedAll
+    const all = expandEvents(events, from, to);
+    return all
       .sort((a, b) => (a._date + (a.time || "")).localeCompare(b._date + (b.time || "")))
       .slice(0, 8);
   }, [events, todayISOStr]);
@@ -154,7 +261,7 @@ export default function CalendarView({ familyId, user }) {
               {selected} {MONTHS[month]}
             </span>
             <button
-              onClick={() => setShowNew(true)}
+              onClick={() => onAdd(dateKey(selected))}
               style={{ background: "var(--coral)", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               + Händelse
@@ -162,7 +269,7 @@ export default function CalendarView({ familyId, user }) {
           </div>
 
           {selectedEvents.map((evt, i) => (
-            <EventRow key={`${evt.id}-${i}`} event={evt} onClick={() => setEditing(evt)} />
+            <EventRow key={`${evt.id}-${i}`} event={evt} onClick={() => onEdit(evt)} />
           ))}
           {selectedEvents.length === 0 && (
             <p style={{ color: "var(--muted-soft)", textAlign: "center", padding: 20, fontSize: 14 }}>
@@ -177,7 +284,7 @@ export default function CalendarView({ familyId, user }) {
               Kommande
             </span>
             <button
-              onClick={() => setShowNew(true)}
+              onClick={() => onAdd(todayISOStr)}
               style={{ background: "var(--coral)", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               + Händelse
@@ -191,36 +298,150 @@ export default function CalendarView({ familyId, user }) {
             </p>
           ) : (
             upcoming.map((evt, i) => (
-              <EventRow key={`${evt.id}-${i}`} event={evt} showDate onClick={() => setEditing(evt)} />
+              <EventRow key={`${evt.id}-${i}`} event={evt} showDate onClick={() => onEdit(evt)} />
             ))
           )}
         </div>
       )}
+    </div>
+  );
+}
 
-      {showNew && (
-        <EventSheet
-          defaultDate={selected ? dateKey(selected) : todayISOStr}
-          onClose={() => setShowNew(false)}
-          onSave={async (event) => {
-            await createEvent(familyId, event, user);
-            setShowNew(false);
-          }}
-        />
-      )}
+// === VECKOVY ===
 
-      {editing && (
-        <EventSheet
-          event={editing}
-          onClose={() => setEditing(null)}
-          onDelete={async () => {
-            await deleteEvent(familyId, editing.id, editing.title, user);
-            setEditing(null);
-          }}
-        />
+function WeekView({ events, loading, weekStart, setWeekStart, onAdd, onEdit }) {
+  const weekEnd = addDays(weekStart, 6);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISOStr = isoDate(today);
+
+  const expanded = useMemo(
+    () => expandEvents(events, isoDate(weekStart), isoDate(weekEnd)),
+    [events, weekStart, weekEnd]
+  );
+
+  const days = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      const dateStr = isoDate(date);
+      const dayEvents = expanded
+        .filter((e) => e._date === dateStr)
+        .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+      return { date, dateStr, events: dayEvents };
+    });
+  }, [weekStart, expanded]);
+
+  // Visning av veckans datumintervall
+  const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
+  const label = sameMonth
+    ? `${weekStart.getDate()}-${weekEnd.getDate()} ${MONTHS[weekStart.getMonth()]}`
+    : `${weekStart.getDate()} ${MONTHS[weekStart.getMonth()]} - ${weekEnd.getDate()} ${MONTHS[weekEnd.getMonth()]}`;
+
+  const moveWeek = (delta) => setWeekStart(addDays(weekStart, delta * 7));
+  const goToThisWeek = () => setWeekStart(startOfWeek(new Date()));
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 className="serif" style={{ fontSize: 19, textTransform: "capitalize" }}>
+          {label}
+        </h2>
+        <div style={{ display: "flex", gap: 6 }}>
+          <NavBtn onClick={() => moveWeek(-1)}>‹</NavBtn>
+          <button
+            onClick={goToThisWeek}
+            style={{ background: "var(--surface-soft)", border: "1px solid var(--line)", borderRadius: 8, padding: "0 12px", height: 34, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--ink)" }}
+          >
+            Idag
+          </button>
+          <NavBtn onClick={() => moveWeek(1)}>›</NavBtn>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="skeleton" style={{ height: 400, borderRadius: 12 }} />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {days.map(({ date, dateStr, events }, i) => {
+            const isToday = dateStr === todayISOStr;
+            return (
+              <div
+                key={dateStr}
+                style={{
+                  background: "var(--surface)",
+                  border: `1px solid ${isToday ? "var(--coral)" : "var(--line)"}`,
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  animation: `slideIn 0.${i + 2}s ease`,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: events.length > 0 ? 8 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: isToday ? "var(--coral)" : "var(--ink)" }}>
+                      {WEEKDAYS_LONG[i]}
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                      {date.getDate()} {MONTHS[date.getMonth()].slice(0, 3)}
+                    </span>
+                    {isToday && (
+                      <span style={{ fontSize: 10, color: "var(--coral)", background: "var(--coral-soft)", padding: "2px 8px", borderRadius: 10, fontWeight: 700, letterSpacing: 0.5 }}>
+                        IDAG
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => onAdd(dateStr)}
+                    style={{ background: "var(--surface-soft)", border: "1px solid var(--line)", borderRadius: 7, width: 26, height: 26, fontSize: 16, cursor: "pointer", color: "var(--coral)", padding: 0, lineHeight: 1 }}
+                    aria-label="Lägg till händelse"
+                  >
+                    +
+                  </button>
+                </div>
+                {events.length === 0 ? null : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {events.map((evt, j) => (
+                      <button
+                        key={`${evt.id}-${j}`}
+                        onClick={() => onEdit(evt)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "8px 10px",
+                          background: "var(--surface-soft)",
+                          border: "1px solid var(--line-soft)",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                          width: "100%",
+                          textAlign: "left",
+                        }}
+                      >
+                        <div style={{ width: 3, alignSelf: "stretch", borderRadius: 3, background: evt.color, flexShrink: 0 }} />
+                        {evt.time && (
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", minWidth: 38, fontFeatureSettings: '"tnum"' }}>
+                            {evt.time}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 13, fontWeight: 500, flex: 1, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {evt.title}
+                        </span>
+                        {evt.recurrence && (
+                          <span style={{ fontSize: 11, color: "var(--muted)" }}>🔁</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
 }
+
+// === HJÄLPKOMPONENTER ===
 
 function EventRow({ event, onClick, showDate }) {
   return (
@@ -251,7 +472,7 @@ function EventRow({ event, onClick, showDate }) {
           {event.recurrence && <> · 🔁</>}
         </div>
       </div>
-      <span style={{ color: "#ccc", fontSize: 18 }}>›</span>
+      <span style={{ color: "var(--muted-soft)", fontSize: 18 }}>›</span>
     </div>
   );
 }
@@ -347,7 +568,7 @@ function EventSheet({ event, defaultDate, onClose, onSave, onDelete }) {
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  border: color === c.value ? "3px solid white" : "3px solid transparent",
+                  border: color === c.value ? "3px solid var(--surface)" : "3px solid transparent",
                   boxShadow: color === c.value ? `0 0 0 2px ${c.value}` : "none",
                   background: c.value,
                   cursor: "pointer",
