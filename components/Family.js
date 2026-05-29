@@ -1,11 +1,12 @@
 // components/Family.js
 "use client";
 
-import { useState } from "react";
-import { renameFamily, leaveFamily } from "@/lib/data";
+import { useState, useEffect } from "react";
+import { renameFamily, leaveFamily, updateMyName } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { memberColor } from "@/lib/colors";
+import { enableNotifications, disableNotifications, notificationStatus } from "@/lib/notifications";
 import Sheet from "./Sheet";
 
 export default function Family({ familyId, family, user, onSignOut }) {
@@ -13,6 +14,42 @@ export default function Family({ familyId, family, user, onSignOut }) {
   const [editName, setEditName] = useState(false);
   const [nameValue, setNameValue] = useState(family.name);
   const [showLeave, setShowLeave] = useState(false);
+  const [notifState, setNotifState] = useState("default");
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [showName, setShowName] = useState(false);
+  const myMember = family.members?.find((m) => m.uid === user.uid);
+  const [myNameValue, setMyNameValue] = useState(myMember?.name || user.displayName?.split(" ")[0] || "");
+
+  useEffect(() => {
+    notificationStatus().then(setNotifState);
+  }, []);
+
+  const handleSaveMyName = async () => {
+    if (myNameValue.trim() && myNameValue.trim() !== myMember?.name) {
+      await updateMyName(user, myNameValue.trim());
+      toast.show("Ditt namn uppdaterat");
+    }
+    setShowName(false);
+  };
+
+  const handleToggleNotif = async () => {
+    setNotifBusy(true);
+    try {
+      if (notifState === "granted") {
+        await disableNotifications(user);
+        setNotifState("default");
+      } else {
+        const res = await enableNotifications(user);
+        if (res.ok) {
+          setNotifState("granted");
+        } else if (res.reason === "denied") {
+          setNotifState("denied");
+        }
+      }
+    } finally {
+      setNotifBusy(false);
+    }
+  };
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [showTheme, setShowTheme] = useState(false);
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
@@ -80,12 +117,11 @@ export default function Family({ familyId, family, user, onSignOut }) {
       {/* Inbjudningskort */}
       <div
         style={{
-          background: "linear-gradient(135deg, var(--coral-soft) 0%, var(--sand-soft) 100%)",
+          background: "var(--coral-soft)",
           borderRadius: 18,
           padding: 20,
           marginBottom: 28,
           border: "1px solid var(--line)",
-          boxShadow: "var(--shadow-card)",
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Bjud in en till familjen</div>
@@ -132,6 +168,12 @@ export default function Family({ familyId, family, user, onSignOut }) {
         Inställningar
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <button onClick={() => { setMyNameValue(myMember?.name || ""); setShowName(true); }} style={settingsRow}>
+          <span>🙋</span>
+          <span style={{ flex: 1, textAlign: "left" }}>Ditt namn</span>
+          <span style={{ color: "var(--muted)", fontSize: 13 }}>{myMember?.name}</span>
+          <span style={{ color: "var(--muted-soft)" }}>›</span>
+        </button>
         <button onClick={() => setShowTheme(true)} style={settingsRow}>
           <span>{themeMode === "dark" ? "🌙" : themeMode === "light" ? "☀️" : "🌗"}</span>
           <span style={{ flex: 1, textAlign: "left" }}>Utseende</span>
@@ -140,6 +182,16 @@ export default function Family({ familyId, family, user, onSignOut }) {
           </span>
           <span style={{ color: "var(--muted-soft)" }}>›</span>
         </button>
+        {notifState !== "unsupported" && (
+          <button onClick={handleToggleNotif} disabled={notifBusy || notifState === "denied"} style={settingsRow}>
+            <span>🔔</span>
+            <span style={{ flex: 1, textAlign: "left" }}>Notiser</span>
+            <span style={{ color: notifState === "granted" ? "var(--sage)" : "var(--muted)", fontSize: 13, fontWeight: 600 }}>
+              {notifBusy ? "..." : notifState === "granted" ? "På" : notifState === "denied" ? "Blockerat" : "Av"}
+            </span>
+            {notifState !== "denied" && <span style={{ color: "var(--muted-soft)" }}>›</span>}
+          </button>
+        )}
         <button
           onClick={() => setShowLeave(true)}
           style={settingsRow}
@@ -157,10 +209,38 @@ export default function Family({ familyId, family, user, onSignOut }) {
           <span style={{ color: "var(--muted-soft)" }}>›</span>
         </button>
       </div>
+      {notifState === "denied" && (
+        <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, padding: "0 4px", lineHeight: 1.5 }}>
+          Notiser är blockerade i webbläsaren. Tillåt dem i telefonens inställningar för appen om du vill slå på dem.
+        </p>
+      )}
 
       <div style={{ fontSize: 11, color: "var(--muted-soft)", textAlign: "center", marginTop: 28 }}>
         Familjeappen · v1.0
       </div>
+
+      {showName && (
+        <Sheet onClose={() => setShowName(false)}>
+          <h3 className="serif" style={{ fontSize: 22, marginBottom: 6 }}>Ditt namn</h3>
+          <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 16 }}>
+            Så här ser de andra i familjen dig.
+          </p>
+          <input
+            value={myNameValue}
+            onChange={(e) => setMyNameValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSaveMyName()}
+            autoFocus
+            placeholder="Ditt namn"
+            style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", fontSize: 15, outline: "none", marginBottom: 16, background: "var(--surface)", color: "var(--ink)" }}
+          />
+          <button
+            onClick={handleSaveMyName}
+            style={{ width: "100%", background: "var(--coral)", color: "white", border: "none", borderRadius: 12, padding: 14, fontWeight: 600, fontSize: 15, cursor: "pointer" }}
+          >
+            Spara
+          </button>
+        </Sheet>
+      )}
 
       {showLeave && (
         <Sheet onClose={() => setShowLeave(false)}>
@@ -252,7 +332,7 @@ export default function Family({ familyId, family, user, onSignOut }) {
 function MemberRow({ member, isMe }) {
   const color = memberColor(member);
   return (
-    <div data-card style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--line)", boxShadow: "var(--shadow-card)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--line)" }}>
       <div style={{ width: 42, height: 42, borderRadius: "50%", background: color.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden", flexShrink: 0, color: "white", fontWeight: 700 }}>
         {member.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
