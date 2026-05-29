@@ -310,16 +310,18 @@ function ItemRow({ item, done, onToggle, onEdit }) {
   const assigneeC = item.assignedTo ? nameColor(item.assignedTo) : null;
   return (
     <div
+      data-card
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "12px 14px",
         background: done ? "var(--surface-soft)" : "var(--surface)",
-        borderRadius: 12,
+        borderRadius: 14,
         border: `1px solid ${overdue ? "var(--coral)" : "var(--line)"}`,
-        opacity: done ? 0.6 : 1,
-        transition: "all 0.15s",
+        opacity: done ? 0.62 : 1,
+        boxShadow: done ? "none" : "var(--shadow-card)",
+        transition: "all 0.2s cubic-bezier(0.2,0.8,0.3,1)",
       }}
     >
       <button
@@ -328,10 +330,10 @@ function ItemRow({ item, done, onToggle, onEdit }) {
         style={{
           width: 26,
           height: 26,
-          borderRadius: 7,
+          borderRadius: 9,
           border: `2px solid ${done ? "var(--sage)" : "var(--muted-soft)"}`,
           background: done ? "var(--sage)" : "transparent",
-          color: "white",
+          color: "#fff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -339,7 +341,7 @@ function ItemRow({ item, done, onToggle, onEdit }) {
           flexShrink: 0,
           cursor: "pointer",
           padding: 0,
-          animation: done ? "checkPop 0.3s ease" : "none",
+          animation: done ? "checkPop 0.34s cubic-bezier(0.16,1,0.3,1)" : "none",
         }}
       >
         {done ? "✓" : ""}
@@ -355,7 +357,7 @@ function ItemRow({ item, done, onToggle, onEdit }) {
         )}
         {item.dueDate && !done && (
           <div style={{ display: "flex", gap: 6, marginTop: 4, fontSize: 11, alignItems: "center" }}>
-            <span style={{ background: overdue ? "#ffe5e0" : "var(--sage-soft)", color: overdue ? "var(--coral)" : "var(--sage)", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
+            <span style={{ background: overdue ? "var(--danger-soft)" : "var(--sage-soft)", color: overdue ? "var(--coral)" : "var(--sage)", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
               📅 {formatDueDate(item.dueDate)}
             </span>
           </div>

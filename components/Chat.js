@@ -162,7 +162,7 @@ export default function Chat({ familyId, user, onSeen }) {
           aria-label="Skicka"
           style={{
             background: text.trim() ? "var(--coral)" : "var(--line)",
-            color: "white",
+            color: "#fff",
             border: "none",
             borderRadius: "50%",
             width: 42,
@@ -173,7 +173,9 @@ export default function Chat({ familyId, user, onSeen }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "background 0.15s",
+            boxShadow: text.trim() ? "0 4px 14px rgba(224,122,95,0.4)" : "none",
+            transform: text.trim() ? "scale(1)" : "scale(0.9)",
+            transition: "background 0.18s ease, box-shadow 0.18s ease, transform 0.18s cubic-bezier(0.2,0.8,0.3,1)",
           }}
         >
           ↑
@@ -192,11 +194,11 @@ function MessageBubble({ msg, isMine, showSender, isLastInGroup }) {
           {msg.senderName}
         </div>
       )}
-      <div style={{ maxWidth: "78%" }}>
+      <div style={{ maxWidth: "78%", animation: "scaleIn 0.18s cubic-bezier(0.16,1,0.3,1)" }}>
         <div
           style={{
             background: isMine ? "var(--coral)" : "var(--surface)",
-            color: isMine ? "white" : "var(--ink)",
+            color: isMine ? "#fff" : "var(--ink)",
             border: isMine ? "none" : "1px solid var(--line)",
             borderRadius: 18,
             borderBottomRightRadius: isMine && isLastInGroup ? 5 : 18,
@@ -206,6 +208,7 @@ function MessageBubble({ msg, isMine, showSender, isLastInGroup }) {
             lineHeight: 1.35,
             wordBreak: "break-word",
             whiteSpace: "pre-wrap",
+            boxShadow: isMine ? "0 2px 8px rgba(224,122,95,0.28)" : "var(--shadow-card)",
           }}
         >
           {msg.text}

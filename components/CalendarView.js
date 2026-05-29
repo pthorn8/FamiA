@@ -448,19 +448,21 @@ function EventRow({ event, onClick, showDate }) {
     <div
       onClick={onClick}
       data-tappable
+      data-card
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "14px 16px",
         background: "var(--surface)",
-        borderRadius: 12,
+        borderRadius: 14,
         border: "1px solid var(--line)",
         marginBottom: 6,
         cursor: "pointer",
+        boxShadow: "var(--shadow-card)",
       }}
     >
-      <div style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: event.color, flexShrink: 0 }} />
+      <div style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: event.color, flexShrink: 0, boxShadow: `0 0 0 3px ${event.color}22` }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {event.title}

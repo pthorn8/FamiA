@@ -283,8 +283,8 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
         width: "100%",
         maxWidth: 480,
         background: "var(--tab-bar)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
+        backdropFilter: "blur(20px) saturate(1.4)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
         borderTop: "1px solid var(--line)",
         display: "flex",
         padding: "8px 0 max(env(safe-area-inset-bottom, 8px), 8px)",
@@ -303,14 +303,21 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 2,
+              gap: 3,
               background: "none",
               border: "none",
               cursor: "pointer",
               padding: "6px 0",
             }}
           >
-            <span style={{ position: "relative", fontSize: 19, filter: isActive ? "none" : "grayscale(0.4)", opacity: isActive ? 1 : 0.5 }}>
+            <span style={{
+              position: "relative",
+              fontSize: 20,
+              filter: isActive ? "none" : "grayscale(0.5)",
+              opacity: isActive ? 1 : 0.5,
+              transform: isActive ? "translateY(-1px) scale(1.08)" : "translateY(0) scale(1)",
+              transition: "transform 0.25s cubic-bezier(0.2,0.8,0.3,1), opacity 0.2s ease, filter 0.2s ease",
+            }}>
               {t.icon}
               {showBadge && (
                 <span
@@ -333,6 +340,7 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
                 fontWeight: isActive ? 700 : 500,
                 color: isActive ? "var(--coral)" : "var(--muted)",
                 letterSpacing: 0.1,
+                transition: "color 0.2s ease",
               }}
             >
               {t.name}
@@ -386,9 +394,9 @@ function FamilySwitcher({ families, activeId, user, onSwitch, onClose }) {
               alignItems: "center",
               gap: 12,
               padding: "14px 16px",
-              background: f.id === activeId ? "var(--coral-soft)" : "white",
+              background: f.id === activeId ? "var(--coral-soft)" : "var(--surface-soft)",
               border: `1px solid ${f.id === activeId ? "var(--coral)" : "var(--line)"}`,
-              borderRadius: 12,
+              borderRadius: 14,
               cursor: "pointer",
               textAlign: "left",
               width: "100%",

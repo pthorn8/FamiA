@@ -268,7 +268,7 @@ function EmptyDetail({ text }) {
 
 function Section({ title, onSeeAll, children }) {
   return (
-    <div style={{ marginBottom: 24 }}>
+    <div style={{ marginBottom: 24, animation: "slideIn 0.35s cubic-bezier(0.16,1,0.3,1) both" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 4px" }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1 }}>
           {title}
@@ -292,22 +292,24 @@ function StatCard({ label, value, icon, highlight, onClick }) {
     <button
       onClick={onClick}
       data-tappable
+      data-card
       style={{
         flex: 1,
         background: highlight ? "var(--coral-soft)" : "var(--surface)",
         border: `1px solid ${highlight ? "var(--coral)" : "var(--line)"}`,
-        borderRadius: 14,
-        padding: "12px 10px",
+        borderRadius: 16,
+        padding: "14px 10px",
         textAlign: "center",
         cursor: "pointer",
         fontFamily: "inherit",
+        boxShadow: "var(--shadow-card)",
       }}
     >
-      <div style={{ fontSize: 20, marginBottom: 2 }}>{icon}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: highlight ? "var(--coral)" : "var(--ink)", fontFamily: "'DM Serif Display', Georgia, serif" }}>
+      <div style={{ fontSize: 20, marginBottom: 3 }}>{icon}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: highlight ? "var(--coral)" : "var(--ink)", fontFamily: "'DM Serif Display', Georgia, serif" }}>
         {value}
       </div>
-      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600, letterSpacing: 0.3 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600, letterSpacing: 0.3, marginTop: 4 }}>
         {label}
       </div>
     </button>
@@ -317,17 +319,19 @@ function StatCard({ label, value, icon, highlight, onClick }) {
 function EventRow({ event, showDate }) {
   return (
     <div
+      data-card
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "12px 14px",
         background: "var(--surface)",
-        borderRadius: 12,
+        borderRadius: 14,
         border: "1px solid var(--line)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
-      <div style={{ width: 4, height: 32, borderRadius: 4, background: event.color, flexShrink: 0 }} />
+      <div style={{ width: 4, height: 34, borderRadius: 4, background: event.color, flexShrink: 0, boxShadow: `0 0 0 3px ${event.color}22` }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {event.title}
@@ -347,14 +351,16 @@ function TodoRow({ item, onToggle }) {
   const assigneeColor = item.assignedTo ? nameColor(item.assignedTo) : null;
   return (
     <div
+      data-card
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "12px 14px",
         background: "var(--surface)",
-        borderRadius: 12,
+        borderRadius: 14,
         border: `1px solid ${overdue ? "var(--coral)" : "var(--line)"}`,
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <button
@@ -362,7 +368,7 @@ function TodoRow({ item, onToggle }) {
         style={{
           width: 24,
           height: 24,
-          borderRadius: 7,
+          borderRadius: 8,
           border: "2px solid var(--muted-soft)",
           background: "transparent",
           cursor: "pointer",
@@ -412,7 +418,7 @@ function TodoRow({ item, onToggle }) {
 function ActivityPreview({ item }) {
   const color = nameColor(item.by?.name || "");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--line)" }}>
+    <div data-card style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--line)", boxShadow: "var(--shadow-card)" }}>
       <div style={{ width: 28, height: 28, borderRadius: "50%", background: color.soft, color: color.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
         {item.emoji}
       </div>

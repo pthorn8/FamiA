@@ -80,11 +80,12 @@ export default function Family({ familyId, family, user, onSignOut }) {
       {/* Inbjudningskort */}
       <div
         style={{
-          background: "var(--coral-soft)",
+          background: "linear-gradient(135deg, var(--coral-soft) 0%, var(--sand-soft) 100%)",
           borderRadius: 18,
           padding: 20,
           marginBottom: 28,
           border: "1px solid var(--line)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Bjud in en till familjen</div>
@@ -251,7 +252,7 @@ export default function Family({ familyId, family, user, onSignOut }) {
 function MemberRow({ member, isMe }) {
   const color = memberColor(member);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--line)" }}>
+    <div data-card style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--line)", boxShadow: "var(--shadow-card)" }}>
       <div style={{ width: 42, height: 42, borderRadius: "50%", background: color.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden", flexShrink: 0, color: "white", fontWeight: 700 }}>
         {member.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
