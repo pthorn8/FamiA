@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { watchMessages, sendMessage, toggleReaction } from "@/lib/data";
+import { watchMessages, sendMessage } from "@/lib/data";
 import { nameColor } from "@/lib/colors";
 
 export default function Chat({ familyId, user, onSeen }) {
@@ -103,8 +103,6 @@ export default function Chat({ familyId, user, onSeen }) {
                   isMine={isMine}
                   showSender={showSender}
                   isLastInGroup={isLastInGroup}
-                  familyId={familyId}
-                  user={user}
                 />
               </div>
             );
@@ -164,7 +162,7 @@ export default function Chat({ familyId, user, onSeen }) {
           aria-label="Skicka"
           style={{
             background: text.trim() ? "var(--coral)" : "var(--line)",
-            color: "white",
+            color: "#fff",
             border: "none",
             borderRadius: "50%",
             width: 42,
@@ -175,7 +173,9 @@ export default function Chat({ familyId, user, onSeen }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "background 0.15s",
+            boxShadow: text.trim() ? "0 4px 14px rgba(224,122,95,0.4)" : "none",
+            transform: text.trim() ? "scale(1)" : "scale(0.9)",
+            transition: "background 0.18s ease, box-shadow 0.18s ease, transform 0.18s cubic-bezier(0.2,0.8,0.3,1)",
           }}
         >
           ↑
@@ -185,18 +185,8 @@ export default function Chat({ familyId, user, onSeen }) {
   );
 }
 
-function MessageBubble({ msg, isMine, showSender, isLastInGroup, familyId, user }) {
+function MessageBubble({ msg, isMine, showSender, isLastInGroup }) {
   const color = nameColor(msg.senderName || "");
-  const [showPicker, setShowPicker] = useState(false);
-  const EMOJIS = ["👍", "❤️", "😂", "🎉", "👏", "🙏"];
-  const reactions = msg.reactions || {};
-  const reactionEntries = Object.entries(reactions).filter(([, uids]) => uids.length > 0);
-
-  const react = (emoji) => {
-    toggleReaction(familyId, msg.id, emoji, user);
-    setShowPicker(false);
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: isMine ? "flex-end" : "flex-start", marginBottom: isLastInGroup ? 10 : 2 }}>
       {showSender && (
@@ -204,13 +194,11 @@ function MessageBubble({ msg, isMine, showSender, isLastInGroup, familyId, user 
           {msg.senderName}
         </div>
       )}
-      <div style={{ maxWidth: "78%", position: "relative" }}>
+      <div style={{ maxWidth: "78%", animation: "scaleIn 0.18s cubic-bezier(0.16,1,0.3,1)" }}>
         <div
-          onDoubleClick={() => react("❤️")}
-          onClick={() => setShowPicker((s) => !s)}
           style={{
             background: isMine ? "var(--coral)" : "var(--surface)",
-            color: isMine ? "white" : "var(--ink)",
+            color: isMine ? "#fff" : "var(--ink)",
             border: isMine ? "none" : "1px solid var(--line)",
             borderRadius: 18,
             borderBottomRightRadius: isMine && isLastInGroup ? 5 : 18,
@@ -220,72 +208,12 @@ function MessageBubble({ msg, isMine, showSender, isLastInGroup, familyId, user 
             lineHeight: 1.35,
             wordBreak: "break-word",
             whiteSpace: "pre-wrap",
-            cursor: "pointer",
+            boxShadow: isMine ? "0 2px 8px rgba(224,122,95,0.28)" : "var(--shadow-card)",
           }}
         >
           {msg.text}
         </div>
-
-        {showPicker && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: "100%",
-              [isMine ? "right" : "left"]: 0,
-              marginBottom: 6,
-              background: "var(--surface)",
-              border: "1px solid var(--line)",
-              borderRadius: 24,
-              padding: "6px 8px",
-              display: "flex",
-              gap: 4,
-              boxShadow: "var(--shadow-lg)",
-              zIndex: 10,
-              animation: "scaleIn 0.12s ease",
-            }}
-          >
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                onClick={(ev) => { ev.stopPropagation(); react(e); }}
-                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: "2px 4px", borderRadius: 8 }}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
-
-      {reactionEntries.length > 0 && (
-        <div style={{ display: "flex", gap: 4, marginTop: 3, marginLeft: isMine ? 0 : 8, marginRight: isMine ? 8 : 0, flexWrap: "wrap" }}>
-          {reactionEntries.map(([emoji, uids]) => {
-            const mine = uids.includes(user.uid);
-            return (
-              <button
-                key={emoji}
-                onClick={() => toggleReaction(familyId, msg.id, emoji, user)}
-                style={{
-                  background: mine ? "var(--coral-soft)" : "var(--surface-soft)",
-                  border: `1px solid ${mine ? "var(--coral)" : "var(--line)"}`,
-                  borderRadius: 12,
-                  padding: "1px 7px",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  color: "var(--ink)",
-                }}
-              >
-                <span>{emoji}</span>
-                {uids.length > 1 && <span style={{ fontWeight: 600, fontSize: 11 }}>{uids.length}</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {isLastInGroup && (
         <div style={{ fontSize: 10, color: "var(--muted-soft)", marginTop: 3, marginLeft: isMine ? 0 : 12, marginRight: isMine ? 4 : 0 }}>
           {formatTime(msg.at)}

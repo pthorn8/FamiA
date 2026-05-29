@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { watchUserFamily, watchUserFamilies, switchFamily, createFamily, joinFamily, watchMessages } from "@/lib/data";
+import { watchUserFamily, watchUserFamilies, switchFamily, createFamily, joinFamily, watchMessages, watchActivity } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
+import { listenForeground } from "@/lib/notifications";
 import { nameColor } from "@/lib/colors";
 import Login from "@/components/Login";
 import Onboarding from "@/components/Onboarding";
@@ -36,6 +37,8 @@ export default function Home() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
   const [lastSeenAt, setLastSeenAt] = useState(0);
+  const [lastActivity, setLastActivity] = useState(null);
+  const [activitySeenAt, setActivitySeenAt] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -52,16 +55,22 @@ export default function Home() {
   useEffect(() => {
     if (!familyId || typeof familyId !== "string") {
       setLastMessage(null);
+      setLastActivity(null);
       return;
     }
     try {
-      const saved = localStorage.getItem(`chat-seen-${familyId}`);
-      setLastSeenAt(saved ? Number(saved) : 0);
+      const savedChat = localStorage.getItem(`chat-seen-${familyId}`);
+      setLastSeenAt(savedChat ? Number(savedChat) : 0);
+      const savedAct = localStorage.getItem(`activity-seen-${familyId}`);
+      setActivitySeenAt(savedAct ? Number(savedAct) : 0);
     } catch (e) {}
-    const unsub = watchMessages(familyId, (msgs) => {
+    const u1 = watchMessages(familyId, (msgs) => {
       setLastMessage(msgs.length ? msgs[msgs.length - 1] : null);
     }, 1);
-    return () => unsub();
+    const u2 = watchActivity(familyId, (items) => {
+      setLastActivity(items.length ? items[0] : null);
+    }, 1);
+    return () => { u1(); u2(); };
   }, [familyId]);
 
   const markChatSeen = (seconds) => {
@@ -71,6 +80,23 @@ export default function Home() {
       if (familyId) localStorage.setItem(`chat-seen-${familyId}`, String(ts));
     } catch (e) {}
   };
+
+  const markActivitySeen = (seconds) => {
+    const ts = seconds || Date.now() / 1000;
+    setActivitySeenAt(ts);
+    try {
+      if (familyId) localStorage.setItem(`activity-seen-${familyId}`, String(ts));
+    } catch (e) {}
+  };
+
+  // Visa en toast när en notis kommer in medan appen är öppen
+  useEffect(() => {
+    let unsub = () => {};
+    listenForeground(({ title, body }) => {
+      toast.show(body ? `${title}: ${body}` : title);
+    }).then((fn) => { unsub = fn; });
+    return () => unsub();
+  }, [toast]);
 
   if (loading) return <Centered><div className="spinner" /></Centered>;
   if (!user) return <Login />;
@@ -91,6 +117,13 @@ export default function Home() {
     lastMessage.senderId !== user.uid &&
     (lastMessage.at?.seconds || 0) > lastSeenAt &&
     tab !== 3;
+
+  // Ny aktivitet: senaste händelsen är nyare än senast sedd, och inte från mig själv
+  const activityUnread =
+    lastActivity &&
+    lastActivity.by?.uid !== user.uid &&
+    (lastActivity.at?.seconds || 0) > activitySeenAt &&
+    tab !== 4;
 
   return (
     <div
@@ -127,9 +160,10 @@ export default function Home() {
         active={tab}
         onChange={(t) => {
           if (t === 3 && lastMessage) markChatSeen(lastMessage.at?.seconds);
+          if (t === 4 && lastActivity) markActivitySeen(lastActivity.at?.seconds);
           setTab(t);
         }}
-        badgeIndex={chatUnread ? 3 : -1}
+        badges={[chatUnread ? 3 : null, activityUnread ? 4 : null].filter((x) => x !== null)}
       />
 
       {switcherOpen && (
@@ -272,7 +306,7 @@ function Avatar({ user }) {
   );
 }
 
-function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
+function TabBar({ tabs, active, onChange, badges = [] }) {
   return (
     <div
       style={{
@@ -283,8 +317,8 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
         width: "100%",
         maxWidth: 480,
         background: "var(--tab-bar)",
-        backdropFilter: "blur(20px) saturate(1.4)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
         borderTop: "1px solid var(--line)",
         display: "flex",
         padding: "8px 0 max(env(safe-area-inset-bottom, 8px), 8px)",
@@ -293,7 +327,7 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
     >
       {tabs.map((t, i) => {
         const isActive = active === i;
-        const showBadge = i === badgeIndex;
+        const showBadge = badges.includes(i);
         return (
           <button
             key={t.name}
@@ -303,21 +337,14 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 3,
+              gap: 2,
               background: "none",
               border: "none",
               cursor: "pointer",
               padding: "6px 0",
             }}
           >
-            <span style={{
-              position: "relative",
-              fontSize: 20,
-              filter: isActive ? "none" : "grayscale(0.5)",
-              opacity: isActive ? 1 : 0.5,
-              transform: isActive ? "translateY(-1px) scale(1.08)" : "translateY(0) scale(1)",
-              transition: "transform 0.25s cubic-bezier(0.2,0.8,0.3,1), opacity 0.2s ease, filter 0.2s ease",
-            }}>
+            <span style={{ position: "relative", fontSize: 19, filter: isActive ? "none" : "grayscale(0.4)", opacity: isActive ? 1 : 0.5 }}>
               {t.icon}
               {showBadge && (
                 <span
@@ -340,7 +367,6 @@ function TabBar({ tabs, active, onChange, badgeIndex = -1 }) {
                 fontWeight: isActive ? 700 : 500,
                 color: isActive ? "var(--coral)" : "var(--muted)",
                 letterSpacing: 0.1,
-                transition: "color 0.2s ease",
               }}
             >
               {t.name}
@@ -394,9 +420,9 @@ function FamilySwitcher({ families, activeId, user, onSwitch, onClose }) {
               alignItems: "center",
               gap: 12,
               padding: "14px 16px",
-              background: f.id === activeId ? "var(--coral-soft)" : "var(--surface-soft)",
+              background: f.id === activeId ? "var(--coral-soft)" : "white",
               border: `1px solid ${f.id === activeId ? "var(--coral)" : "var(--line)"}`,
-              borderRadius: 14,
+              borderRadius: 12,
               cursor: "pointer",
               textAlign: "left",
               width: "100%",

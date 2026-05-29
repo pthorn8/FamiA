@@ -12,8 +12,6 @@ import {
   deleteListItem,
   clearCompleted,
   deleteList,
-  setListRecurrence,
-  maybeResetList,
 } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import { nameColor } from "@/lib/colors";
@@ -28,14 +26,7 @@ export default function Lists({ familyId, user, family }) {
   const [showNewList, setShowNewList] = useState(false);
 
   useEffect(() => {
-    const unsub = watchLists(familyId, (l) => {
-      setLists(l);
-      setLoading(false);
-      // Nollställ återkommande listor om en ny period börjat
-      l.forEach((list) => {
-        if (list.resetSchedule) maybeResetList(familyId, list);
-      });
-    });
+    const unsub = watchLists(familyId, (l) => { setLists(l); setLoading(false); });
     return () => unsub();
   }, [familyId]);
 
@@ -116,9 +107,8 @@ function ListCard({ list, onClick }) {
     >
       <span style={{ fontSize: 30 }}>{list.icon || "📋"}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{list.name}</span>
-          {list.resetSchedule && <span style={{ fontSize: 12, flexShrink: 0 }} title="Återkommande">🔁</span>}
+        <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {list.name}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 10, overflow: "hidden", maxWidth: 140 }}>
@@ -297,10 +287,6 @@ function ListDetail({ familyId, list, family, user, onBack }) {
           list={list}
           onChangeIcon={handleChangeIcon}
           onClose={() => setShowMenu(false)}
-          onSetRecurrence={async (schedule) => {
-            await setListRecurrence(familyId, list.id, schedule, user);
-            toast.show(schedule ? "Listan återkommer nu" : "Återkommande avstängt");
-          }}
           onClear={async () => {
             await clearCompleted(familyId, list, user);
             setShowMenu(false);
@@ -324,16 +310,18 @@ function ItemRow({ item, done, onToggle, onEdit }) {
   const assigneeC = item.assignedTo ? nameColor(item.assignedTo) : null;
   return (
     <div
+      data-card
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "12px 14px",
         background: done ? "var(--surface-soft)" : "var(--surface)",
-        borderRadius: 12,
+        borderRadius: 14,
         border: `1px solid ${overdue ? "var(--coral)" : "var(--line)"}`,
-        opacity: done ? 0.6 : 1,
-        transition: "all 0.15s",
+        opacity: done ? 0.62 : 1,
+        boxShadow: done ? "none" : "var(--shadow-card)",
+        transition: "all 0.2s cubic-bezier(0.2,0.8,0.3,1)",
       }}
     >
       <button
@@ -342,10 +330,10 @@ function ItemRow({ item, done, onToggle, onEdit }) {
         style={{
           width: 26,
           height: 26,
-          borderRadius: 7,
+          borderRadius: 9,
           border: `2px solid ${done ? "var(--sage)" : "var(--muted-soft)"}`,
           background: done ? "var(--sage)" : "transparent",
-          color: "white",
+          color: "#fff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -353,7 +341,7 @@ function ItemRow({ item, done, onToggle, onEdit }) {
           flexShrink: 0,
           cursor: "pointer",
           padding: 0,
-          animation: done ? "checkPop 0.3s ease" : "none",
+          animation: done ? "checkPop 0.34s cubic-bezier(0.16,1,0.3,1)" : "none",
         }}
       >
         {done ? "✓" : ""}
@@ -369,7 +357,7 @@ function ItemRow({ item, done, onToggle, onEdit }) {
         )}
         {item.dueDate && !done && (
           <div style={{ display: "flex", gap: 6, marginTop: 4, fontSize: 11, alignItems: "center" }}>
-            <span style={{ background: overdue ? "#ffe5e0" : "var(--sage-soft)", color: overdue ? "var(--coral)" : "var(--sage)", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
+            <span style={{ background: overdue ? "var(--danger-soft)" : "var(--sage-soft)", color: overdue ? "var(--coral)" : "var(--sage)", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
               📅 {formatDueDate(item.dueDate)}
             </span>
           </div>
@@ -521,7 +509,7 @@ function ItemSheet({ familyId, list, item, family, user, onClose }) {
   );
 }
 
-function ListMenuSheet({ list, onChangeIcon, onClear, onDelete, onClose, onSetRecurrence }) {
+function ListMenuSheet({ list, onChangeIcon, onClear, onDelete, onClose }) {
   return (
     <Sheet onClose={onClose}>
       <h3 className="serif" style={{ fontSize: 20, marginBottom: 16 }}>Listinställningar</h3>
@@ -537,7 +525,7 @@ function ListMenuSheet({ list, onChangeIcon, onClear, onDelete, onClose, onSetRe
               height: 46,
               fontSize: 22,
               border: `2px solid ${list.icon === icon ? "var(--coral)" : "var(--line)"}`,
-              background: list.icon === icon ? "var(--coral-soft)" : "var(--surface)",
+              background: list.icon === icon ? "var(--coral-soft)" : "white",
               borderRadius: 12,
               cursor: "pointer",
             }}
@@ -545,39 +533,6 @@ function ListMenuSheet({ list, onChangeIcon, onClear, onDelete, onClose, onSetRe
             {icon}
           </button>
         ))}
-      </div>
-
-      <label style={fieldLabel}>Återkommande</label>
-      <p style={{ fontSize: 12, color: "var(--muted)", marginTop: -4, marginBottom: 8 }}>
-        Bockar nollställs automatiskt. Bra för t.ex. veckans sysslor.
-      </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 24 }}>
-        {[
-          { value: null, label: "Av" },
-          { value: "daily", label: "Varje dag" },
-          { value: "weekly", label: "Varje vecka" },
-          { value: "monthly", label: "Varje månad" },
-        ].map((opt) => {
-          const active = (list.resetSchedule || null) === opt.value;
-          return (
-            <button
-              key={opt.label}
-              onClick={() => onSetRecurrence(opt.value)}
-              style={{
-                background: active ? "var(--coral)" : "var(--surface)",
-                color: active ? "white" : "var(--ink)",
-                border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
-                borderRadius: 20,
-                padding: "8px 14px",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
