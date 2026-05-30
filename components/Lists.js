@@ -17,6 +17,8 @@ import {
 } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import { nameColor } from "@/lib/colors";
+import { haptics } from "@/lib/haptics";
+import { celebrate } from "@/lib/celebrate";
 import Sheet from "./Sheet";
 
 const ICONS = ["📋", "🛒", "🏠", "✈️", "🎁", "📚", "🍽️", "🌱", "🔧", "⚽", "🐾", "💊"];
@@ -165,6 +167,22 @@ function ListDetail({ familyId, list, family, user, onBack }) {
     setNewItem("");
   };
 
+  const handleToggle = async (item) => {
+    const wasUndone = !item.done;
+    haptics.light();
+    await toggleListItem(familyId, list, item.id, user);
+    if (wasUndone) {
+      // Kollade vi just av sista kvarvarande?
+      const remaining = list.items.filter((i) => !i.done && i.id !== item.id).length;
+      const total = list.items.length;
+      if (remaining === 0 && total > 1) {
+        celebrate();
+        haptics.success();
+        toast.show(`🎉 Klart! ${list.name} är avbockad.`);
+      }
+    }
+  };
+
   const handleSaveName = async () => {
     if (nameValue.trim() && nameValue !== list.name) {
       await updateList(familyId, list.id, { name: nameValue.trim() }, user, `döpte om "${list.name}" till "${nameValue.trim()}"`);
@@ -241,7 +259,7 @@ function ListDetail({ familyId, list, family, user, onBack }) {
           >
             <ItemRow
               item={item}
-              onToggle={() => toggleListItem(familyId, list, item.id, user)}
+              onToggle={() => handleToggle(item)}
               onEdit={() => setEditingItem(item)}
             />
           </Swipeable>
@@ -271,7 +289,7 @@ function ListDetail({ familyId, list, family, user, onBack }) {
             <ItemRow
               item={item}
               done
-              onToggle={() => toggleListItem(familyId, list, item.id, user)}
+              onToggle={() => handleToggle(item)}
               onEdit={() => setEditingItem(item)}
             />
           </Swipeable>

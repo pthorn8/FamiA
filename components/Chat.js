@@ -4,6 +4,7 @@
 import { useEffect, useState, useRef } from "react";
 import { watchMessages, sendMessage, toggleReaction } from "@/lib/data";
 import { nameColor } from "@/lib/colors";
+import { haptics } from "@/lib/haptics";
 
 export default function Chat({ familyId, user, onSeen }) {
   const [messages, setMessages] = useState([]);
@@ -54,6 +55,7 @@ export default function Chat({ familyId, user, onSeen }) {
     if (!trimmed || sending) return;
     setText("");
     setSending(true);
+    haptics.light();
     try {
       await sendMessage(familyId, user, trimmed);
     } catch (e) {

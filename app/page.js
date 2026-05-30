@@ -17,6 +17,8 @@ import ActivityFeed from "@/components/ActivityFeed";
 import Chat from "@/components/Chat";
 import Sheet from "@/components/Sheet";
 import Search from "@/components/Search";
+import NetworkStatus from "@/components/NetworkStatus";
+import { timeBasedGreeting } from "@/lib/dates";
 
 const TABS = [
   { name: "Hem", icon: "🏡" },
@@ -135,6 +137,7 @@ export default function Home() {
         position: "relative",
       }}
     >
+      <NetworkStatus />
       <Header
         user={user}
         family={activeFamily}
@@ -206,7 +209,7 @@ function Header({ user, family, familyCount, onSwitchClick, onSearchClick }) {
     >
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 2 }}>
-          Hej {user.displayName?.split(" ")[0] || "där"} 👋
+          {timeBasedGreeting()} {user.displayName?.split(" ")[0] || "där"} 👋
         </div>
         <button
           onClick={onSwitchClick}
