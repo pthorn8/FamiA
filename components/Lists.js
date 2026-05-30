@@ -184,7 +184,7 @@ function ListCard({ list, onClick }) {
           </>
         )}
       </div>
-      <span style={{ color: "#ccc", fontSize: 20 }}>›</span>
+      <span style={{ color: "var(--muted-soft)", fontSize: 20 }}>›</span>
     </div>
   );
 }
@@ -249,7 +249,7 @@ function ListDetail({ familyId, list, family, user, onBack }) {
     <div style={{ animation: "slideIn 0.2s ease" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <button onClick={onBack} style={backBtn}>← Tillbaka</button>
-        <button onClick={() => setShowMenu(true)} style={iconBtn}>⋯</button>
+        <button onClick={() => setShowMenu(true)} style={iconBtn} aria-label="Listinställningar">⋯</button>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>

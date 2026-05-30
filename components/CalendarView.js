@@ -617,6 +617,7 @@ function NavBtn({ children, onClick }) {
   return (
     <button
       onClick={onClick}
+      aria-label={children === "‹" ? "Föregående" : "Nästa"}
       style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 8, width: 34, height: 34, fontSize: 18, cursor: "pointer", color: "var(--ink)" }}
     >
       {children}

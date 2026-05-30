@@ -72,12 +72,36 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
 input, button, textarea, select {
   font-family: inherit;
   color: inherit;
+}
+
+/* Hindra iOS från att zooma in när man fokuserar ett fält (kräver minst 16px) */
+@media (max-width: 600px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Tydlig fokusram för tangentbordsnavigering, utan att störa musklick */
+button:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+
+/* Respektera om användaren stängt av rörelser i systeminställningar */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 button {
