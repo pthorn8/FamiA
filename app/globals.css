@@ -1,22 +1,19 @@
 /* app/globals.css */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
 
 /* === Ljust läge (standard) === */
 :root, [data-theme="light"] {
   --bg: #faf9f6;
   --surface: #ffffff;
   --surface-soft: #f8f6f3;
-  --surface-2: #fcfbf9;
   --ink: #2D3142;
   --ink-soft: #3D405B;
   --coral: #E07A5F;
-  --coral-strong: #d56a4d;
   --coral-soft: #fef4f0;
   --sage: #81B29A;
   --sage-soft: #eef5f0;
   --sand: #F2CC8F;
   --sand-soft: #fdf6e7;
-  --danger-soft: #ffe9e4;
   --line: #ececec;
   --line-soft: #f3f0ec;
   --muted: #999;
@@ -24,15 +21,11 @@
   --header-from: #2D3142;
   --header-to: #3D405B;
   --header-text: #ffffff;
-  --on-coral: #ffffff;
   --shadow-sm: 0 1px 2px rgba(45, 49, 66, 0.04);
   --shadow-md: 0 4px 16px rgba(45, 49, 66, 0.08);
   --shadow-lg: 0 10px 40px rgba(45, 49, 66, 0.12);
-  --shadow-card: 0 1px 2px rgba(45,49,66,0.04), 0 2px 8px rgba(45,49,66,0.04);
-  --shadow-pop: 0 8px 30px rgba(45,49,66,0.14);
-  --backdrop: rgba(45, 49, 66, 0.45);
-  --tab-bar: rgba(255, 255, 255, 0.86);
-  --ring: rgba(224, 122, 95, 0.35);
+  --backdrop: rgba(45, 49, 66, 0.5);
+  --tab-bar: rgba(255, 255, 255, 0.96);
 }
 
 /* === Mörkt läge === */
@@ -40,17 +33,14 @@
   --bg: #16171f;
   --surface: #20222d;
   --surface-soft: #1a1c25;
-  --surface-2: #262936;
   --ink: #f0eee8;
   --ink-soft: #c8c5be;
   --coral: #ed8a72;
-  --coral-strong: #f29982;
   --coral-soft: #3a2622;
   --sage: #95c5ad;
   --sage-soft: #1f2d28;
   --sand: #f2cc8f;
   --sand-soft: #2e2820;
-  --danger-soft: #3a2320;
   --line: #2d2f3a;
   --line-soft: #25272f;
   --muted: #888;
@@ -58,15 +48,11 @@
   --header-from: #0f1019;
   --header-to: #1a1c2a;
   --header-text: #f0eee8;
-  --on-coral: #1a120f;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.2);
-  --shadow-pop: 0 10px 34px rgba(0,0,0,0.5);
   --backdrop: rgba(0, 0, 0, 0.6);
-  --tab-bar: rgba(32, 34, 45, 0.82);
-  --ring: rgba(237, 138, 114, 0.4);
+  --tab-bar: rgba(32, 34, 45, 0.96);
 }
 
 * {
@@ -86,8 +72,7 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  letter-spacing: -0.01em;
-  transition: background 0.3s ease, color 0.3s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 input, button, textarea, select {
@@ -104,14 +89,9 @@ input::placeholder, textarea::placeholder {
   color: var(--muted-soft);
 }
 
-/* Mjukare, modern fokusring istället för hård outline */
 input:focus, textarea:focus, select:focus {
-  outline: none;
-  border-color: var(--coral) !important;
-  box-shadow: 0 0 0 3px var(--ring);
-}
-input, textarea, select {
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  outline: 2px solid var(--coral);
+  outline-offset: 1px;
 }
 
 input[type="date"], input[type="time"] {
@@ -120,7 +100,7 @@ input[type="date"], input[type="time"] {
 
 /* === Animationer === */
 @keyframes slideIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -148,10 +128,9 @@ input[type="date"], input[type="time"] {
   50% { opacity: 0.7; }
 }
 
-/* Springig bock-animation när man bockar av */
 @keyframes checkPop {
-  0% { transform: scale(0.5); }
-  55% { transform: scale(1.25); }
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
 
@@ -160,30 +139,9 @@ input[type="date"], input[type="time"] {
   100% { background-position: 200% 0; }
 }
 
-/* Mjuk uppglidning för bottendialoger med fjäderkänsla */
-@keyframes sheetUp {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes sheetDown {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(40px); }
-}
-
-@keyframes backdropOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-@keyframes ripple {
-  to { transform: scale(2.4); opacity: 0; }
-}
-
 /* === Verktyg === */
 .serif {
   font-family: 'DM Serif Display', Georgia, serif;
-  letter-spacing: 0;
 }
 
 .spinner {
@@ -198,29 +156,18 @@ input[type="date"], input[type="time"] {
 .skeleton {
   background: linear-gradient(90deg, var(--line-soft) 0%, var(--surface-soft) 50%, var(--line-soft) 100%);
   background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
-  border-radius: 12px;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
 }
 
-/* === Tryckfeedback: snabb, fjädrande === */
-button, [role="button"], [data-tappable] {
-  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.3, 1),
-              background 0.18s ease, opacity 0.18s ease,
-              box-shadow 0.18s ease, border-color 0.18s ease;
-}
+/* === Tryckfeedback === */
 button:active, [role="button"]:active, [data-tappable]:active {
-  transform: scale(0.96);
+  transform: scale(0.98);
+  transition: transform 0.1s;
 }
 
-/* Korthovering på enheter med pekdon */
-@media (hover: hover) {
-  [data-card]:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
-  }
-}
-[data-card] {
-  transition: transform 0.18s cubic-bezier(0.2,0.8,0.3,1), box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+button {
+  transition: transform 0.1s ease, background 0.15s ease, opacity 0.15s ease;
 }
 
 /* === Modal-bakgrund === */
@@ -228,55 +175,38 @@ button:active, [role="button"]:active, [data-tappable]:active {
   position: fixed;
   inset: 0;
   background: var(--backdrop);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
   z-index: 1000;
-  animation: fadeIn 0.22s ease;
+  animation: fadeIn 0.2s ease;
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
-.backdrop.closing { animation: backdropOut 0.2s ease forwards; }
 
 .sheet {
   background: var(--surface);
   width: 100%;
   max-width: 480px;
-  border-radius: 26px 26px 0 0;
-  padding: 22px 20px calc(28px + env(safe-area-inset-bottom, 0px));
-  animation: sheetUp 0.34s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 88vh;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 32px;
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 85vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-pop);
-  -webkit-overflow-scrolling: touch;
 }
-.sheet.closing { animation: sheetDown 0.22s cubic-bezier(0.4, 0, 1, 1) forwards; }
 
 .sheet-handle {
-  width: 40px;
+  width: 36px;
   height: 4px;
   background: var(--line);
-  border-radius: 99px;
-  margin: 0 auto 18px;
+  border-radius: 2px;
+  margin: 0 auto 16px;
 }
 
 /* === Scrollbar i webbläsare === */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--line);
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-soft);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  border-radius: 3px;
 }

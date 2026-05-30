@@ -14,6 +14,7 @@ import {
   deleteList,
   setListRecurrence,
   maybeResetList,
+  updateNoteText,
 } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import { nameColor } from "@/lib/colors";
@@ -28,6 +29,7 @@ export default function Lists({ familyId, user, family }) {
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState(null);
   const [showNewList, setShowNewList] = useState(false);
+  const [filter, setFilter] = useState("all"); // all | checklist | note
 
   useEffect(() => {
     const unsub = watchLists(familyId, (l) => {
@@ -50,6 +52,15 @@ export default function Lists({ familyId, user, family }) {
     return <ListDetail familyId={familyId} list={list} family={family} user={user} onBack={() => setActiveId(null)} />;
   }
 
+  const hasNotes = lists.some((l) => l.type === "note");
+  const hasChecklists = lists.some((l) => l.type !== "note");
+  const showFilter = hasNotes && hasChecklists;
+  const visibleLists = lists.filter((l) => {
+    if (filter === "note") return l.type === "note";
+    if (filter === "checklist") return l.type !== "note";
+    return true;
+  });
+
   return (
     <div>
       <SectionHeader title="Våra listor">
@@ -57,23 +68,53 @@ export default function Lists({ familyId, user, family }) {
           onClick={() => setShowNewList(true)}
           style={primaryBtn}
         >
-          + Ny lista
+          + Ny
         </button>
       </SectionHeader>
+
+      {showFilter && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {[
+            { value: "all", label: "Alla" },
+            { value: "checklist", label: "Listor" },
+            { value: "note", label: "Anteckningar" },
+          ].map((opt) => {
+            const active = filter === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setFilter(opt.value)}
+                style={{
+                  background: active ? "var(--coral)" : "var(--surface)",
+                  color: active ? "white" : "var(--ink)",
+                  border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
+                  borderRadius: 20,
+                  padding: "7px 14px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {loading ? (
         <ListSkeleton />
       ) : lists.length === 0 ? (
         <EmptyState
           emoji="📋"
-          title="Inga listor än"
-          desc="Skapa din första lista för att komma igång."
-          actionLabel="Skapa lista"
+          title="Inget än"
+          desc="Skapa din första lista eller anteckning för att komma igång."
+          actionLabel="Skapa"
           onAction={() => setShowNewList(true)}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {lists.map((list) => (
+          {visibleLists.map((list) => (
             <ListCard key={list.id} list={list} onClick={() => setActiveId(list.id)} />
           ))}
         </div>
@@ -82,8 +123,8 @@ export default function Lists({ familyId, user, family }) {
       {showNewList && (
         <NewListSheet
           onClose={() => setShowNewList(false)}
-          onCreate={async (name, icon) => {
-            await createList(familyId, name, icon, user);
+          onCreate={async (name, icon, type) => {
+            await createList(familyId, name, icon, user, type);
             setShowNewList(false);
           }}
         />
@@ -116,23 +157,31 @@ function ListCard({ list, onClick }) {
         boxShadow: "var(--shadow-sm)",
       }}
     >
-      <span style={{ fontSize: 30 }}>{list.icon || "📋"}</span>
+      <span style={{ fontSize: 30 }}>{list.icon || (list.type === "note" ? "📝" : "📋")}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{list.name}</span>
           {list.resetSchedule && <span style={{ fontSize: 12, flexShrink: 0 }} title="Återkommande">🔁</span>}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 10, overflow: "hidden", maxWidth: 140 }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 && total > 0 ? "var(--sage)" : "var(--coral)", transition: "width 0.3s" }} />
+        {list.type === "note" ? (
+          <div style={{ fontSize: 13, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {list.text?.trim() ? list.text.trim().split("\n")[0] : "Tom anteckning"}
           </div>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>{done}/{total}</span>
-        </div>
-        {upcoming && (
-          <div style={{ fontSize: 12, color: "var(--coral)", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
-            <span>📅</span>
-            <span>{formatDueDate(upcoming.dueDate)}</span>
-          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 10, overflow: "hidden", maxWidth: 140 }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 && total > 0 ? "var(--sage)" : "var(--coral)", transition: "width 0.3s" }} />
+              </div>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>{done}/{total}</span>
+            </div>
+            {upcoming && (
+              <div style={{ fontSize: 12, color: "var(--coral)", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                <span>📅</span>
+                <span>{formatDueDate(upcoming.dueDate)}</span>
+              </div>
+            )}
+          </>
         )}
       </div>
       <span style={{ color: "#ccc", fontSize: 20 }}>›</span>
@@ -230,11 +279,16 @@ function ListDetail({ familyId, list, family, user, onBack }) {
             </h2>
           )}
           <span style={{ fontSize: 13, color: "var(--muted)" }}>
-            {sortedItems.notDone.length} kvar · {sortedItems.done.length} klara
+            {list.type === "note"
+              ? "Anteckning"
+              : `${sortedItems.notDone.length} kvar · ${sortedItems.done.length} klara`}
           </span>
         </div>
       </div>
 
+      {list.type === "note" ? (
+        <NoteEditor familyId={familyId} list={list} />
+      ) : (
       <div style={{ display: "flex", gap: 8, marginBottom: 20, background: "var(--surface-soft)", borderRadius: 14, padding: 6 }}>
         <input
           value={newItem}
@@ -247,6 +301,9 @@ function ListDetail({ familyId, list, family, user, onBack }) {
           +
         </button>
       </div>
+      )}
+
+      {list.type !== "note" && (
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {sortedItems.notDone.map((item) => (
@@ -298,6 +355,7 @@ function ListDetail({ familyId, list, family, user, onBack }) {
           <EmptyState emoji="✏️" title="Listan är tom" desc="Lägg till första saken ovan." compact />
         )}
       </div>
+      )}
 
       {editingItem && (
         <ItemSheet
@@ -333,6 +391,79 @@ function ListDetail({ familyId, list, family, user, onBack }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function NoteEditor({ familyId, list }) {
+  const [text, setText] = useState(list.text || "");
+  const [status, setStatus] = useState("idle"); // idle | saving | saved
+  const focused = useRef(false);
+  const saveTimer = useRef(null);
+  const lastSaved = useRef(list.text || "");
+
+  // Ta emot andras ändringar när man inte själv skriver
+  useEffect(() => {
+    if (!focused.current && (list.text || "") !== lastSaved.current) {
+      setText(list.text || "");
+      lastSaved.current = list.text || "";
+    }
+  }, [list.text]);
+
+  const scheduleSave = (value) => {
+    setStatus("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      await updateNoteText(familyId, list.id, value);
+      lastSaved.current = value;
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 1500);
+    }, 700);
+  };
+
+  const handleChange = (e) => {
+    setText(e.target.value);
+    scheduleSave(e.target.value);
+  };
+
+  const handleBlur = async () => {
+    focused.current = false;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (text !== lastSaved.current) {
+      setStatus("saving");
+      await updateNoteText(familyId, list.id, text);
+      lastSaved.current = text;
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 1500);
+    }
+  };
+
+  return (
+    <div>
+      <textarea
+        value={text}
+        onChange={handleChange}
+        onFocus={() => { focused.current = true; }}
+        onBlur={handleBlur}
+        placeholder="Skriv här... t.ex. detaljer om vad ni ska handla, mått, länkar, tankar."
+        style={{
+          width: "100%",
+          minHeight: "55vh",
+          border: "1px solid var(--line)",
+          borderRadius: 14,
+          padding: "16px",
+          fontSize: 15,
+          lineHeight: 1.6,
+          outline: "none",
+          resize: "none",
+          background: "var(--surface)",
+          color: "var(--ink)",
+          fontFamily: "inherit",
+        }}
+      />
+      <div style={{ textAlign: "right", fontSize: 12, color: "var(--muted-soft)", marginTop: 6, height: 16 }}>
+        {status === "saving" ? "Sparar..." : status === "saved" ? "✓ Sparat" : ""}
+      </div>
     </div>
   );
 }
@@ -565,47 +696,53 @@ function ListMenuSheet({ list, onChangeIcon, onClear, onDelete, onClose, onSetRe
         ))}
       </div>
 
-      <label style={fieldLabel}>Återkommande</label>
-      <p style={{ fontSize: 12, color: "var(--muted)", marginTop: -4, marginBottom: 8 }}>
-        Bockar nollställs automatiskt. Bra för t.ex. veckans sysslor.
-      </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 24 }}>
-        {[
-          { value: null, label: "Av" },
-          { value: "daily", label: "Varje dag" },
-          { value: "weekly", label: "Varje vecka" },
-          { value: "monthly", label: "Varje månad" },
-        ].map((opt) => {
-          const active = (list.resetSchedule || null) === opt.value;
-          return (
-            <button
-              key={opt.label}
-              onClick={() => onSetRecurrence(opt.value)}
-              style={{
-                background: active ? "var(--coral)" : "var(--surface)",
-                color: active ? "white" : "var(--ink)",
-                border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
-                borderRadius: 20,
-                padding: "8px 14px",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
+      {list.type !== "note" && (
+        <>
+          <label style={fieldLabel}>Återkommande</label>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: -4, marginBottom: 8 }}>
+            Bockar nollställs automatiskt. Bra för t.ex. veckans sysslor.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 24 }}>
+            {[
+              { value: null, label: "Av" },
+              { value: "daily", label: "Varje dag" },
+              { value: "weekly", label: "Varje vecka" },
+              { value: "monthly", label: "Varje månad" },
+            ].map((opt) => {
+              const active = (list.resetSchedule || null) === opt.value;
+              return (
+                <button
+                  key={opt.label}
+                  onClick={() => onSetRecurrence(opt.value)}
+                  style={{
+                    background: active ? "var(--coral)" : "var(--surface)",
+                    color: active ? "white" : "var(--ink)",
+                    border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
+                    borderRadius: 20,
+                    padding: "8px 14px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          onClick={onClear}
-          disabled={!list.items.some((i) => i.done)}
-          style={{ ...menuItem, opacity: list.items.some((i) => i.done) ? 1 : 0.4 }}
-        >
-          🧹 Rensa klara
-        </button>
+        {list.type !== "note" && (
+          <button
+            onClick={onClear}
+            disabled={!list.items.some((i) => i.done)}
+            style={{ ...menuItem, opacity: list.items.some((i) => i.done) ? 1 : 0.4 }}
+          >
+            🧹 Rensa klara
+          </button>
+        )}
         <button onClick={onDelete} style={{ ...menuItem, color: "var(--coral)" }}>
           🗑️ Ta bort listan
         </button>
@@ -617,24 +754,68 @@ function ListMenuSheet({ list, onChangeIcon, onClear, onDelete, onClose, onSetRe
 function NewListSheet({ onClose, onCreate }) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("📋");
+  const [type, setType] = useState("checklist");
   const [busy, setBusy] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     setBusy(true);
-    await onCreate(name.trim(), icon);
+    await onCreate(name.trim(), icon, type);
+  };
+
+  const pickType = (t) => {
+    setType(t);
+    // Byt standardikon om användaren inte valt en egen
+    if (t === "note" && icon === "📋") setIcon("📝");
+    if (t === "checklist" && icon === "📝") setIcon("📋");
   };
 
   return (
     <Sheet onClose={onClose}>
-      <h3 className="serif" style={{ fontSize: 22, marginBottom: 20 }}>Ny lista</h3>
+      <h3 className="serif" style={{ fontSize: 22, marginBottom: 20 }}>Ny</h3>
+
+      <label style={fieldLabel}>Typ</label>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <button
+          onClick={() => pickType("checklist")}
+          style={{
+            flex: 1,
+            textAlign: "left",
+            padding: "14px",
+            borderRadius: 12,
+            border: `2px solid ${type === "checklist" ? "var(--coral)" : "var(--line)"}`,
+            background: type === "checklist" ? "var(--coral-soft)" : "var(--surface)",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontSize: 22, marginBottom: 4 }}>☑️</div>
+          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>Checklista</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Bocka av saker</div>
+        </button>
+        <button
+          onClick={() => pickType("note")}
+          style={{
+            flex: 1,
+            textAlign: "left",
+            padding: "14px",
+            borderRadius: 12,
+            border: `2px solid ${type === "note" ? "var(--coral)" : "var(--line)"}`,
+            background: type === "note" ? "var(--coral-soft)" : "var(--surface)",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontSize: 22, marginBottom: 4 }}>📝</div>
+          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>Anteckning</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Skriv fritt</div>
+        </button>
+      </div>
 
       <label style={fieldLabel}>Namn</label>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-        placeholder="t.ex. Veckans inköp"
+        placeholder={type === "note" ? "t.ex. Renovering badrum" : "t.ex. Veckans inköp"}
         autoFocus
         style={sheetInput}
       />
@@ -650,7 +831,7 @@ function NewListSheet({ onClose, onCreate }) {
               height: 46,
               fontSize: 22,
               border: `2px solid ${icon === i ? "var(--coral)" : "var(--line)"}`,
-              background: icon === i ? "var(--coral-soft)" : "white",
+              background: icon === i ? "var(--coral-soft)" : "var(--surface)",
               borderRadius: 12,
               cursor: "pointer",
             }}
@@ -676,7 +857,7 @@ function NewListSheet({ onClose, onCreate }) {
           opacity: !name.trim() ? 0.5 : 1,
         }}
       >
-        Skapa lista
+        {type === "note" ? "Skapa anteckning" : "Skapa lista"}
       </button>
     </Sheet>
   );

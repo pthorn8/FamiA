@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { renameFamily, leaveFamily, updateMyName } from "@/lib/data";
+import { renameFamily, leaveFamily, updateMyName, setNotifPrefs, getNotifPrefs } from "@/lib/data";
 import { useToast } from "@/lib/ToastContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { memberColor } from "@/lib/colors";
@@ -17,12 +17,20 @@ export default function Family({ familyId, family, user, onSignOut }) {
   const [notifState, setNotifState] = useState("default");
   const [notifBusy, setNotifBusy] = useState(false);
   const [showName, setShowName] = useState(false);
+  const [notifPrefs, setNotifPrefsState] = useState({ chat: true, lists: true, calendar: true });
   const myMember = family.members?.find((m) => m.uid === user.uid);
   const [myNameValue, setMyNameValue] = useState(myMember?.name || user.displayName?.split(" ")[0] || "");
 
   useEffect(() => {
     notificationStatus().then(setNotifState);
-  }, []);
+    getNotifPrefs(user.uid).then(setNotifPrefsState);
+  }, [user.uid]);
+
+  const togglePref = async (key) => {
+    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefsState(next);
+    await setNotifPrefs(user, next);
+  };
 
   const handleSaveMyName = async () => {
     if (myNameValue.trim() && myNameValue.trim() !== myMember?.name) {
@@ -192,6 +200,15 @@ export default function Family({ familyId, family, user, onSignOut }) {
             {notifState !== "denied" && <span style={{ color: "var(--muted-soft)" }}>›</span>}
           </button>
         )}
+        {notifState === "granted" && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: "4px 16px" }}>
+            <PrefToggle label="💬 Nya meddelanden" on={notifPrefs.chat !== false} onToggle={() => togglePref("chat")} />
+            <div style={{ height: 1, background: "var(--line-soft)" }} />
+            <PrefToggle label="📋 Listor" on={notifPrefs.lists !== false} onToggle={() => togglePref("lists")} />
+            <div style={{ height: 1, background: "var(--line-soft)" }} />
+            <PrefToggle label="📅 Kalender" on={notifPrefs.calendar !== false} onToggle={() => togglePref("calendar")} />
+          </div>
+        )}
         <button
           onClick={() => setShowLeave(true)}
           style={settingsRow}
@@ -326,6 +343,42 @@ export default function Family({ familyId, family, user, onSignOut }) {
         </Sheet>
       )}
     </div>
+  );
+}
+
+function PrefToggle({ label, on, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", background: "none", border: "none", cursor: "pointer", width: "100%", color: "var(--ink)" }}
+    >
+      <span style={{ flex: 1, textAlign: "left", fontSize: 14 }}>{label}</span>
+      <span
+        style={{
+          width: 42,
+          height: 25,
+          borderRadius: 13,
+          background: on ? "var(--sage)" : "var(--line)",
+          position: "relative",
+          transition: "background 0.2s",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 3,
+            left: on ? 20 : 3,
+            width: 19,
+            height: 19,
+            borderRadius: "50%",
+            background: "white",
+            transition: "left 0.2s",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          }}
+        />
+      </span>
+    </button>
   );
 }
 

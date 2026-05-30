@@ -52,10 +52,7 @@ export default function Login() {
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "radial-gradient(120% 80% at 50% -10%, rgba(224,122,95,0.28) 0%, rgba(224,122,95,0) 55%)," +
-          "radial-gradient(90% 60% at 90% 110%, rgba(129,178,154,0.22) 0%, rgba(129,178,154,0) 60%)," +
-          "linear-gradient(160deg, #2D3142 0%, #3D405B 60%, #4a3d5e 100%)",
+        background: "linear-gradient(160deg, #2D3142 0%, #3D405B 60%, #4a3d5e 100%)",
         color: "white",
         display: "flex",
         flexDirection: "column",

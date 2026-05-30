@@ -30,7 +30,7 @@ export async function POST(req) {
     const decoded = await adminApp.auth().verifyIdToken(idToken);
     const senderId = decoded.uid;
 
-    const { familyId, title, body, url } = await req.json();
+    const { familyId, title, body, url, category } = await req.json();
     if (!familyId || !title) {
       return NextResponse.json({ error: "Saknar fält" }, { status: 400 });
     }
@@ -45,12 +45,16 @@ export async function POST(req) {
       return NextResponse.json({ error: "Inte medlem" }, { status: 403 });
     }
 
-    // Samla in tokens från alla andra medlemmar
+    // Samla in tokens från alla andra medlemmar som vill ha den här sortens notis
     const recipients = memberIds.filter((id) => id !== senderId);
     const tokenMap = {}; // token -> uid (för att kunna städa bort ogiltiga)
     for (const uid of recipients) {
       const userSnap = await db.doc(`users/${uid}`).get();
-      const tokens = userSnap.data()?.fcmTokens || [];
+      const data = userSnap.data() || {};
+      // Kolla inställningar: standard är på om inget angetts
+      const prefs = data.notifPrefs || {};
+      if (category && category !== "other" && prefs[category] === false) continue;
+      const tokens = data.fcmTokens || [];
       for (const t of tokens) tokenMap[t] = uid;
     }
     const tokens = Object.keys(tokenMap);
