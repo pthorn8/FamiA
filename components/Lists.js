@@ -216,6 +216,22 @@ function ListDetail({ familyId, list, family, user, onBack }) {
     setNewItem("");
   };
 
+  // Vanliga varor: mest tillagda som inte redan finns i listan
+  const frequentSuggestions = (() => {
+    const freq = list.frequentItems || {};
+    const present = new Set((list.items || []).map((i) => i.text.trim().toLowerCase()));
+    return Object.entries(freq)
+      .filter(([key, v]) => v.count >= 2 && !present.has(key))
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 6)
+      .map(([, v]) => v.text);
+  })();
+
+  const quickAddFrequent = async (text) => {
+    haptics.light();
+    await addListItem(familyId, list, { text }, user);
+  };
+
   const handleToggle = async (item) => {
     const wasUndone = !item.done;
     haptics.light();
@@ -289,17 +305,43 @@ function ListDetail({ familyId, list, family, user, onBack }) {
       {list.type === "note" ? (
         <NoteEditor familyId={familyId} list={list} />
       ) : (
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, background: "var(--surface-soft)", borderRadius: 14, padding: 6 }}>
-        <input
-          value={newItem}
-          onChange={(e) => setNewItem(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          placeholder="Lägg till..."
-          style={{ flex: 1, border: "none", background: "transparent", padding: "12px 14px", fontSize: 15, outline: "none" }}
-        />
-        <button onClick={handleAdd} style={{ background: "var(--coral)", color: "white", border: "none", borderRadius: 10, padding: "8px 18px", fontSize: 22, cursor: "pointer", fontWeight: 600 }}>
-          +
-        </button>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 8, background: "var(--surface-soft)", borderRadius: 14, padding: 6 }}>
+          <input
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            placeholder="Lägg till..."
+            style={{ flex: 1, border: "none", background: "transparent", padding: "12px 14px", fontSize: 15, outline: "none", color: "var(--ink)" }}
+          />
+          <button onClick={handleAdd} style={{ background: "var(--coral)", color: "white", border: "none", borderRadius: 10, padding: "8px 18px", fontSize: 22, cursor: "pointer", fontWeight: 600 }}>
+            +
+          </button>
+        </div>
+        {frequentSuggestions.length > 0 && (
+          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+            {frequentSuggestions.map((sugg) => (
+              <button
+                key={sugg}
+                onClick={() => quickAddFrequent(sugg)}
+                style={{
+                  background: "var(--surface)",
+                  color: "var(--ink-soft)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 16,
+                  padding: "6px 12px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <span style={{ color: "var(--sage)", fontWeight: 700 }}>+</span> {sugg}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       )}
 

@@ -2,8 +2,10 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { watchLists, watchEvents, watchActivity, expandEvents, toggleListItem } from "@/lib/data";
+import { watchLists, watchEvents, watchActivity, expandEvents, toggleListItem, addListItem } from "@/lib/data";
 import { memberColor, nameColor } from "@/lib/colors";
+import { haptics } from "@/lib/haptics";
+import { useToast } from "@/lib/ToastContext";
 import Sheet from "./Sheet";
 
 export default function Dashboard({ familyId, family, user, onOpenTab }) {
@@ -90,6 +92,46 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
   const toggleItem = (item) =>
     toggleListItem(familyId, lists.find((l) => l.id === item.listId), item.id, user);
 
+  const toast = useToast();
+  const myName = useMemo(
+    () => family.members?.find((m) => m.uid === user.uid)?.name || "",
+    [family, user]
+  );
+
+  // Saker tilldelade just mig (ej klara), över alla listor
+  const assignedToMe = useMemo(() => {
+    const items = [];
+    for (const list of lists) {
+      if (list.type === "note") continue;
+      for (const item of list.items || []) {
+        if (!item.done && item.assignedTo && item.assignedTo === myName) {
+          items.push({ ...item, listId: list.id, listName: list.name, listIcon: list.icon });
+        }
+      }
+    }
+    return items.sort((a, b) => {
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    });
+  }, [lists, myName]);
+
+  // Snabbinmatning
+  const checklists = useMemo(() => lists.filter((l) => l.type !== "note"), [lists]);
+  const [quickText, setQuickText] = useState("");
+  const [quickListId, setQuickListId] = useState(null);
+  const targetList = checklists.find((l) => l.id === quickListId) || checklists[0];
+
+  const handleQuickAdd = async () => {
+    if (!quickText.trim() || !targetList) return;
+    const text = quickText.trim();
+    setQuickText("");
+    haptics.light();
+    await addListItem(familyId, targetList, { text }, user);
+    toast.show(`Tillagt i ${targetList.name}`);
+  };
+
   const greeting = getGreeting(user);
 
   if (loading) {
@@ -115,11 +157,85 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
       </div>
 
       {/* Snabb-statistik */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <StatCard label="Att göra" value={stats.activeItems} icon="📋" onClick={() => setDetail("todo")} />
         <StatCard label="Idag" value={todayEvents.length} icon="📅" onClick={() => setDetail("today")} />
         <StatCard label="Förfaller" value={todoToday.length} icon="⏰" highlight={todoToday.length > 0} onClick={() => setDetail("due")} />
       </div>
+
+      {/* Snabbinmatning */}
+      {checklists.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: 8, background: "var(--surface-soft)", borderRadius: 14, padding: 6 }}>
+            <input
+              value={quickText}
+              onChange={(e) => setQuickText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleQuickAdd()}
+              placeholder="Lägg till snabbt..."
+              style={{ flex: 1, border: "none", background: "transparent", padding: "12px 14px", fontSize: 15, outline: "none", color: "var(--ink)" }}
+            />
+            <button onClick={handleQuickAdd} style={{ background: "var(--coral)", color: "white", border: "none", borderRadius: 10, padding: "8px 18px", fontSize: 22, cursor: "pointer", fontWeight: 600 }}>
+              +
+            </button>
+          </div>
+          {checklists.length > 1 && (
+            <div style={{ display: "flex", gap: 6, marginTop: 8, overflowX: "auto", paddingBottom: 2 }}>
+              {checklists.map((l) => {
+                const active = targetList?.id === l.id;
+                return (
+                  <button
+                    key={l.id}
+                    onClick={() => setQuickListId(l.id)}
+                    style={{
+                      background: active ? "var(--coral-soft)" : "var(--surface)",
+                      color: active ? "var(--coral)" : "var(--muted)",
+                      border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
+                      borderRadius: 16,
+                      padding: "5px 12px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {l.icon} {l.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Till dig */}
+      {assignedToMe.length > 0 && (
+        <Section title="Till dig">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {assignedToMe.map((item) => (
+              <div
+                key={item.id}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--line)" }}
+              >
+                <button
+                  onClick={() => { haptics.light(); toggleItem(item); }}
+                  aria-label="Markera klar"
+                  style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--coral)", background: "transparent", cursor: "pointer", flexShrink: 0 }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.text}
+                  </div>
+                  <div style={{ fontSize: 12, color: item.dueDate && item.dueDate <= todayISO ? "var(--coral)" : "var(--muted)", marginTop: 2 }}>
+                    {item.listIcon} {item.listName}
+                    {item.dueDate && ` · ${item.dueDate <= todayISO ? "förfaller" : "till " + item.dueDate}`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Idag-händelser */}
       {todayEvents.length > 0 && (

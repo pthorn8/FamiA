@@ -2,9 +2,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { watchMessages, sendMessage, toggleReaction } from "@/lib/data";
+import { watchMessages, sendMessage, toggleReaction, watchLists, addListItem } from "@/lib/data";
 import { nameColor } from "@/lib/colors";
 import { haptics } from "@/lib/haptics";
+import { useToast } from "@/lib/ToastContext";
+import Sheet from "./Sheet";
 
 export default function Chat({ familyId, user, onSeen }) {
   const [messages, setMessages] = useState([]);
@@ -12,6 +14,9 @@ export default function Chat({ familyId, user, onSeen }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [inputBottom, setInputBottom] = useState(70);
+  const [lists, setLists] = useState([]);
+  const [convertMsg, setConvertMsg] = useState(null);
+  const toast = useToast();
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -20,7 +25,8 @@ export default function Chat({ familyId, user, onSeen }) {
       setMessages(m);
       setLoading(false);
     });
-    return () => unsub();
+    const unsub2 = watchLists(familyId, (l) => setLists(l.filter((x) => x.type !== "note")));
+    return () => { unsub(); unsub2(); };
   }, [familyId]);
 
   useEffect(() => {
@@ -107,6 +113,7 @@ export default function Chat({ familyId, user, onSeen }) {
                   isLastInGroup={isLastInGroup}
                   familyId={familyId}
                   user={user}
+                  onConvert={() => setConvertMsg(msg)}
                 />
               </div>
             );
@@ -183,11 +190,54 @@ export default function Chat({ familyId, user, onSeen }) {
           ↑
         </button>
       </div>
+
+      {convertMsg && (
+        <ConvertToTaskSheet
+          msg={convertMsg}
+          lists={lists}
+          onClose={() => setConvertMsg(null)}
+          onPick={async (list) => {
+            await addListItem(familyId, list, { text: convertMsg.text }, user);
+            setConvertMsg(null);
+            toast.show(`Tillagt i ${list.name}`);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function MessageBubble({ msg, isMine, showSender, isLastInGroup, familyId, user }) {
+function ConvertToTaskSheet({ msg, lists, onClose, onPick }) {
+  return (
+    <Sheet onClose={onClose}>
+      <h3 className="serif" style={{ fontSize: 20, marginBottom: 6 }}>Lägg till i lista</h3>
+      <div style={{ background: "var(--surface-soft)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 14, color: "var(--ink-soft)", fontStyle: "italic" }}>
+        "{msg.text}"
+      </div>
+      {lists.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 14, padding: "8px 0 16px" }}>
+          Du har inga checklistor än. Skapa en under Listor först.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {lists.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => onPick(l)}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, cursor: "pointer", fontSize: 15, color: "var(--ink)", textAlign: "left" }}
+            >
+              <span style={{ fontSize: 22 }}>{l.icon || "📋"}</span>
+              <span style={{ flex: 1, fontWeight: 500 }}>{l.name}</span>
+              <span style={{ color: "var(--muted-soft)" }}>›</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+function MessageBubble({ msg, isMine, showSender, isLastInGroup, familyId, user, onConvert }) {
   const color = nameColor(msg.senderName || "");
   const [showPicker, setShowPicker] = useState(false);
   const EMOJIS = ["👍", "❤️", "😂", "🎉", "👏", "🙏"];
@@ -255,6 +305,14 @@ function MessageBubble({ msg, isMine, showSender, isLastInGroup, familyId, user 
                 {e}
               </button>
             ))}
+            <span style={{ width: 1, background: "var(--line)", margin: "2px 2px" }} />
+            <button
+              onClick={(ev) => { ev.stopPropagation(); setShowPicker(false); onConvert(); }}
+              aria-label="Lägg till i lista"
+              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", padding: "2px 6px", borderRadius: 8 }}
+            >
+              📋
+            </button>
           </div>
         )}
       </div>
