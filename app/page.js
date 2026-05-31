@@ -13,7 +13,6 @@ import Dashboard from "@/components/Dashboard";
 import Lists from "@/components/Lists";
 import CalendarView from "@/components/CalendarView";
 import Family from "@/components/Family";
-import ActivityFeed from "@/components/ActivityFeed";
 import Chat from "@/components/Chat";
 import Sheet from "@/components/Sheet";
 import Search from "@/components/Search";
@@ -25,7 +24,6 @@ const TABS = [
   { name: "Listor", icon: "📋" },
   { name: "Kalender", icon: "📅" },
   { name: "Chatt", icon: "💬" },
-  { name: "Aktivitet", icon: "🔔" },
   { name: "Familj", icon: "👥" },
 ];
 
@@ -153,8 +151,16 @@ export default function Home() {
           {tab === 0 && <Dashboard familyId={activeFamily.id} family={activeFamily} user={user} onOpenTab={setTab} />}
           {tab === 1 && <Lists familyId={activeFamily.id} user={user} family={activeFamily} />}
           {tab === 2 && <CalendarView familyId={activeFamily.id} user={user} />}
-          {tab === 4 && <ActivityFeed familyId={activeFamily.id} />}
-          {tab === 5 && <Family familyId={activeFamily.id} family={activeFamily} user={user} onSignOut={signOut} />}
+          {tab === 4 && (
+            <Family
+              familyId={activeFamily.id}
+              family={activeFamily}
+              user={user}
+              onSignOut={signOut}
+              activityUnread={activityUnread}
+              onActivitySeen={() => lastActivity && markActivitySeen(lastActivity.at?.seconds)}
+            />
+          )}
         </div>
       )}
 
@@ -163,7 +169,6 @@ export default function Home() {
         active={tab}
         onChange={(t) => {
           if (t === 3 && lastMessage) markChatSeen(lastMessage.at?.seconds);
-          if (t === 4 && lastActivity) markActivitySeen(lastActivity.at?.seconds);
           setTab(t);
         }}
         badges={[chatUnread ? 3 : null, activityUnread ? 4 : null].filter((x) => x !== null)}

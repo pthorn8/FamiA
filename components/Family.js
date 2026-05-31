@@ -7,13 +7,15 @@ import { useToast } from "@/lib/ToastContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { memberColor } from "@/lib/colors";
 import { enableNotifications, disableNotifications, notificationStatus } from "@/lib/notifications";
+import ActivityFeed from "./ActivityFeed";
 import Sheet from "./Sheet";
 
-export default function Family({ familyId, family, user, onSignOut }) {
+export default function Family({ familyId, family, user, onSignOut, activityUnread, onActivitySeen }) {
   const [copied, setCopied] = useState(false);
   const [editName, setEditName] = useState(false);
   const [nameValue, setNameValue] = useState(family.name);
   const [showLeave, setShowLeave] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
   const [notifState, setNotifState] = useState("default");
   const [notifBusy, setNotifBusy] = useState(false);
   const [showName, setShowName] = useState(false);
@@ -101,6 +103,21 @@ export default function Family({ familyId, family, user, onSignOut }) {
     setShowLeave(false);
   };
 
+  // Undervy: aktivitetsflödet, öppnas från Familj
+  if (showActivity) {
+    return (
+      <div style={{ animation: "slideIn 0.2s ease" }}>
+        <button
+          onClick={() => setShowActivity(false)}
+          style={{ background: "none", border: "none", color: "var(--coral)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "0 0 16px", display: "flex", alignItems: "center", gap: 6 }}
+        >
+          ‹ Familj
+        </button>
+        <ActivityFeed familyId={familyId} />
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Familjnamn */}
@@ -121,6 +138,24 @@ export default function Family({ familyId, family, user, onSignOut }) {
           </h2>
         )}
       </div>
+
+      {/* Aktivitet */}
+      <button
+        onClick={() => { setShowActivity(true); onActivitySeen && onActivitySeen(); }}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, cursor: "pointer", marginBottom: 24, color: "var(--ink)" }}
+      >
+        <span style={{ fontSize: 20, position: "relative" }}>
+          🔔
+          {activityUnread && (
+            <span style={{ position: "absolute", top: -2, right: -4, width: 9, height: 9, borderRadius: "50%", background: "var(--coral)", border: "2px solid var(--surface)" }} />
+          )}
+        </span>
+        <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 15 }}>Aktivitet</span>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>
+          {activityUnread ? "Nytt" : "Vad har hänt"}
+        </span>
+        <span style={{ color: "var(--muted-soft)" }}>›</span>
+      </button>
 
       {/* Inbjudningskort */}
       <div
