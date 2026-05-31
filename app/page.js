@@ -13,6 +13,7 @@ import Dashboard from "@/components/Dashboard";
 import Lists from "@/components/Lists";
 import CalendarView from "@/components/CalendarView";
 import Family from "@/components/Family";
+import { TAB_ICONS } from "@/components/icons";
 import Chat from "@/components/Chat";
 import Sheet from "@/components/Sheet";
 import Search from "@/components/Search";
@@ -336,6 +337,7 @@ function TabBar({ tabs, active, onChange, badges = [] }) {
       {tabs.map((t, i) => {
         const isActive = active === i;
         const showBadge = badges.includes(i);
+        const Icon = TAB_ICONS[i];
         return (
           <button
             key={t.name}
@@ -345,21 +347,29 @@ function TabBar({ tabs, active, onChange, badges = [] }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 2,
+              gap: 4,
               background: "none",
               border: "none",
               cursor: "pointer",
               padding: "6px 0",
             }}
           >
-            <span style={{ position: "relative", fontSize: 19, filter: isActive ? "none" : "grayscale(0.4)", opacity: isActive ? 1 : 0.5 }}>
-              {t.icon}
+            <span
+              style={{
+                position: "relative",
+                display: "flex",
+                color: isActive ? "var(--coral)" : "var(--muted)",
+                transform: isActive ? "translateY(-1px)" : "none",
+                transition: "transform 0.18s ease, color 0.18s ease",
+              }}
+            >
+              {Icon ? <Icon active={isActive} /> : t.icon}
               {showBadge && (
                 <span
                   style={{
                     position: "absolute",
-                    top: -2,
-                    right: -5,
+                    top: -1,
+                    right: -3,
                     width: 9,
                     height: 9,
                     borderRadius: "50%",
@@ -371,7 +381,7 @@ function TabBar({ tabs, active, onChange, badges = [] }) {
             </span>
             <span
               style={{
-                fontSize: 10,
+                fontSize: 10.5,
                 fontWeight: isActive ? 700 : 500,
                 color: isActive ? "var(--coral)" : "var(--muted)",
                 letterSpacing: 0.1,

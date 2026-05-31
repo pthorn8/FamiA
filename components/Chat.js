@@ -13,7 +13,7 @@ export default function Chat({ familyId, user, onSeen }) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [inputBottom, setInputBottom] = useState(70);
+  const [inputBottom, setInputBottom] = useState("calc(66px + env(safe-area-inset-bottom, 8px))");
   const [lists, setLists] = useState([]);
   const [convertMsg, setConvertMsg] = useState(null);
   const toast = useToast();
@@ -40,13 +40,17 @@ export default function Chat({ familyId, user, onSeen }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Vilolägets position: precis ovanför tab-baren, inkl. safe area på iPhone
+  const REST_BOTTOM = "calc(66px + env(safe-area-inset-bottom, 8px))";
+
   // Håll skrivfältet ovanför tangentbordet på iOS
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
     const onUpdate = () => {
       const offset = window.innerHeight - vv.height - vv.offsetTop;
-      setInputBottom(Math.max(70, offset + 8));
+      // Tangentbordet öppet: lägg rutan strax ovanför det. Stängt: vila ovanför baren.
+      setInputBottom(offset > 60 ? `${offset + 8}px` : REST_BOTTOM);
     };
     vv.addEventListener("resize", onUpdate);
     vv.addEventListener("scroll", onUpdate);
@@ -78,7 +82,7 @@ export default function Chat({ familyId, user, onSeen }) {
         style={{
           height: "100%",
           overflowY: "auto",
-          padding: "16px 16px 120px",
+          padding: "16px 16px calc(135px + env(safe-area-inset-bottom, 0px))",
           display: "flex",
           flexDirection: "column",
         }}
