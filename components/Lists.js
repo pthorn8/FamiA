@@ -148,13 +148,12 @@ function ListCard({ list, onClick }) {
       style={{
         background: "var(--surface)",
         borderRadius: 16,
-        padding: "18px 20px",
+        padding: "16px 18px",
         cursor: "pointer",
         border: "1px solid var(--line)",
         display: "flex",
         alignItems: "center",
-        gap: 16,
-        boxShadow: "var(--shadow-sm)",
+        gap: 15,
       }}
     >
       <span style={{ fontSize: 30 }}>{list.icon || (list.type === "note" ? "📝" : "📋")}</span>
@@ -346,25 +345,30 @@ function ListDetail({ familyId, list, family, user, onBack }) {
       )}
 
       {list.type !== "note" && (
+      <div>
+        {sortedItems.notDone.length > 0 && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden" }}>
+            {sortedItems.notDone.map((item, idx) => (
+              <Swipeable
+                key={item.id}
+                onDelete={async () => {
+                  await deleteListItem(familyId, list, item.id, user);
+                  toast.show("Borttagen");
+                }}
+              >
+                <ItemRow
+                  item={item}
+                  onToggle={() => handleToggle(item)}
+                  onEdit={() => setEditingItem(item)}
+                  divider={idx < sortedItems.notDone.length - 1}
+                />
+              </Swipeable>
+            ))}
+          </div>
+        )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {sortedItems.notDone.map((item) => (
-          <Swipeable
-            key={item.id}
-            onDelete={async () => {
-              await deleteListItem(familyId, list, item.id, user);
-              toast.show("Borttagen");
-            }}
-          >
-            <ItemRow
-              item={item}
-              onToggle={() => handleToggle(item)}
-              onEdit={() => setEditingItem(item)}
-            />
-          </Swipeable>
-        ))}
         {sortedItems.done.length > 0 && (
-          <div style={{ fontSize: 11, color: "var(--muted)", padding: "16px 4px 4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", padding: "20px 4px 8px", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>Klart ({sortedItems.done.length})</span>
             <button
               onClick={async () => {
@@ -377,22 +381,29 @@ function ListDetail({ familyId, list, family, user, onBack }) {
             </button>
           </div>
         )}
-        {sortedItems.done.map((item) => (
-          <Swipeable
-            key={item.id}
-            onDelete={async () => {
-              await deleteListItem(familyId, list, item.id, user);
-              toast.show("Borttagen");
-            }}
-          >
-            <ItemRow
-              item={item}
-              done
-              onToggle={() => handleToggle(item)}
-              onEdit={() => setEditingItem(item)}
-            />
-          </Swipeable>
-        ))}
+
+        {sortedItems.done.length > 0 && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden", opacity: 0.75 }}>
+            {sortedItems.done.map((item, idx) => (
+              <Swipeable
+                key={item.id}
+                onDelete={async () => {
+                  await deleteListItem(familyId, list, item.id, user);
+                  toast.show("Borttagen");
+                }}
+              >
+                <ItemRow
+                  item={item}
+                  done
+                  onToggle={() => handleToggle(item)}
+                  onEdit={() => setEditingItem(item)}
+                  divider={idx < sortedItems.done.length - 1}
+                />
+              </Swipeable>
+            ))}
+          </div>
+        )}
+
         {list.items.length === 0 && (
           <EmptyState emoji="✏️" title="Listan är tom" desc="Lägg till första saken ovan." compact />
         )}
@@ -510,7 +521,7 @@ function NoteEditor({ familyId, list }) {
   );
 }
 
-function ItemRow({ item, done, onToggle, onEdit }) {
+function ItemRow({ item, done, onToggle, onEdit, divider }) {
   const overdue = item.dueDate && !done && item.dueDate < todayISO();
   const assigneeC = item.assignedTo ? nameColor(item.assignedTo) : null;
   return (
@@ -518,29 +529,27 @@ function ItemRow({ item, done, onToggle, onEdit }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
-        background: done ? "var(--surface-soft)" : "var(--surface)",
-        borderRadius: 12,
-        border: `1px solid ${overdue ? "var(--coral)" : "var(--line)"}`,
-        opacity: done ? 0.6 : 1,
-        transition: "all 0.15s",
+        gap: 13,
+        padding: "13px 16px",
+        background: "var(--surface)",
+        borderBottom: divider ? "1px solid var(--line-soft)" : "none",
+        transition: "background 0.15s",
       }}
     >
       <button
         onClick={onToggle}
         aria-label={done ? "Markera ej klar" : "Markera klar"}
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: 7,
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
           border: `2px solid ${done ? "var(--sage)" : "var(--muted-soft)"}`,
           background: done ? "var(--sage)" : "transparent",
           color: "white",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 14,
+          fontSize: 13,
           flexShrink: 0,
           cursor: "pointer",
           padding: 0,
@@ -561,7 +570,7 @@ function ItemRow({ item, done, onToggle, onEdit }) {
         {item.dueDate && !done && (
           <div style={{ display: "flex", gap: 6, marginTop: 4, fontSize: 11, alignItems: "center" }}>
             <span style={{ background: overdue ? "#ffe5e0" : "var(--sage-soft)", color: overdue ? "var(--coral)" : "var(--sage)", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
-              📅 {formatDueDate(item.dueDate)}
+              {overdue ? "Förfaller " : ""}{formatDueDate(item.dueDate)}
             </span>
           </div>
         )}
@@ -570,31 +579,22 @@ function ItemRow({ item, done, onToggle, onEdit }) {
         <div
           title={`Tilldelad ${item.assignedTo}`}
           style={{
-            width: 28,
-            height: 28,
+            width: 26,
+            height: 26,
             borderRadius: "50%",
             background: assigneeC.bg,
             color: "white",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: 700,
             flexShrink: 0,
-            border: "2px solid var(--surface)",
-            boxShadow: "var(--shadow-sm)",
           }}
         >
           {item.assignedTo[0]?.toUpperCase()}
         </div>
       )}
-      <button
-        onClick={onEdit}
-        style={{ background: "none", border: "none", color: "var(--muted-soft)", cursor: "pointer", fontSize: 18, padding: 4 }}
-        aria-label="Redigera"
-      >
-        ⋯
-      </button>
     </div>
   );
 }
@@ -1104,14 +1104,13 @@ function Swipeable({ children, onDelete }) {
   };
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
+    <div style={{ position: "relative", overflow: "hidden" }}>
       {/* Bakgrund (visas när man drar) */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background: "var(--coral)",
-          borderRadius: 12,
           display: "flex",
           alignItems: "center",
           justifyContent: "flex-end",
