@@ -86,9 +86,9 @@ export default function ActivityFeed({ familyId }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 4px" }}>
               {label}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {groupConsecutive(dayItems).map((row, i) => (
-                <ActivityRow key={row.key || i} row={row} />
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden" }}>
+              {groupConsecutive(dayItems).map((row, i, arr) => (
+                <ActivityRow key={row.key || i} row={row} divider={i < arr.length - 1} />
               ))}
             </div>
           </div>
@@ -133,13 +133,13 @@ function StatBlock({ label, value, suffix, emoji, small }) {
   );
 }
 
-function ActivityRow({ row }) {
+function ActivityRow({ row, divider }) {
   const item = row.latest;
   const count = row.children.length;
   const color = nameColor(item.by?.name || "");
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--line)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface)", borderBottom: divider ? "1px solid var(--line-soft)" : "none" }}>
       <div style={{ width: 36, height: 36, borderRadius: "50%", background: color.soft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, border: `1px solid ${color.bg}33`, position: "relative" }}>
         {item.emoji}
         {count > 1 && (

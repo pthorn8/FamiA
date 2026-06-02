@@ -272,9 +272,13 @@ function MonthView({ events, loading, cursor, setCursor, selected, setSelected, 
             </button>
           </div>
 
-          {selectedEvents.map((evt, i) => (
-            <EventRow key={`${evt.id}-${i}`} event={evt} onClick={() => onEdit(evt)} />
-          ))}
+          {selectedEvents.length > 0 && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden" }}>
+              {selectedEvents.map((evt, i) => (
+                <EventRow key={`${evt.id}-${i}`} event={evt} onClick={() => onEdit(evt)} divider={i < selectedEvents.length - 1} />
+              ))}
+            </div>
+          )}
           {selectedEvents.length === 0 && (
             <p style={{ color: "var(--muted-soft)", textAlign: "center", padding: 20, fontSize: 14 }}>
               Inga händelser den här dagen
@@ -301,9 +305,11 @@ function MonthView({ events, loading, cursor, setCursor, selected, setSelected, 
               Inga kommande händelser
             </p>
           ) : (
-            upcoming.map((evt, i) => (
-              <EventRow key={`${evt.id}-${i}`} event={evt} showDate onClick={() => onEdit(evt)} />
-            ))
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden" }}>
+              {upcoming.map((evt, i) => (
+                <EventRow key={`${evt.id}-${i}`} event={evt} showDate onClick={() => onEdit(evt)} divider={i < upcoming.length - 1} />
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -447,7 +453,7 @@ function WeekView({ events, loading, weekStart, setWeekStart, onAdd, onEdit }) {
 
 // === HJÄLPKOMPONENTER ===
 
-function EventRow({ event, onClick, showDate }) {
+function EventRow({ event, onClick, showDate, divider }) {
   return (
     <div
       onClick={onClick}
@@ -458,9 +464,7 @@ function EventRow({ event, onClick, showDate }) {
         gap: 12,
         padding: "14px 16px",
         background: "var(--surface)",
-        borderRadius: 12,
-        border: "1px solid var(--line)",
-        marginBottom: 6,
+        borderBottom: divider ? "1px solid var(--line-soft)" : "none",
         cursor: "pointer",
       }}
     >

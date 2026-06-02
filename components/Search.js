@@ -1,7 +1,7 @@
 // components/Search.js
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { watchLists, watchEvents, expandEvents } from "@/lib/data";
 
 export default function Search({ familyId, onClose, onJumpToTab }) {
@@ -184,8 +184,12 @@ function ResultSection({ title, children }) {
       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 4px" }}>
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {children}
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden" }}>
+        {React.Children.toArray(children).map((child, i, arr) => (
+          <div key={i} style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
+            {child}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -201,8 +205,7 @@ function ItemResult({ item, onClick }) {
         gap: 12,
         padding: "12px 14px",
         background: "var(--surface)",
-        border: "1px solid var(--line)",
-        borderRadius: 12,
+        border: "none",
         cursor: "pointer",
         width: "100%",
         textAlign: "left",
@@ -234,8 +237,7 @@ function EventResult({ event, onClick }) {
         gap: 12,
         padding: "12px 14px",
         background: "var(--surface)",
-        border: "1px solid var(--line)",
-        borderRadius: 12,
+        border: "none",
         cursor: "pointer",
         width: "100%",
         textAlign: "left",

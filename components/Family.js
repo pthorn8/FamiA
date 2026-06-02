@@ -200,9 +200,9 @@ export default function Family({ familyId, family, user, onSignOut, activityUnre
       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1, padding: "0 4px" }}>
         {family.members?.length || 0} medlemmar
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 32 }}>
-        {family.members?.map((m) => (
-          <MemberRow key={m.uid} member={m} isMe={m.uid === user.uid} />
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden", marginBottom: 32 }}>
+        {family.members?.map((m, i) => (
+          <MemberRow key={m.uid} member={m} isMe={m.uid === user.uid} divider={i < (family.members.length - 1)} />
         ))}
       </div>
 
@@ -417,10 +417,10 @@ function PrefToggle({ label, on, onToggle }) {
   );
 }
 
-function MemberRow({ member, isMe }) {
+function MemberRow({ member, isMe, divider }) {
   const color = memberColor(member);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--line)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--surface)", borderBottom: divider ? "1px solid var(--line-soft)" : "none" }}>
       <div style={{ width: 42, height: 42, borderRadius: "50%", background: color.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden", flexShrink: 0, color: "white", fontWeight: 700 }}>
         {member.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element

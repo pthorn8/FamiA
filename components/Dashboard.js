@@ -8,6 +8,9 @@ import { haptics } from "@/lib/haptics";
 import { useToast } from "@/lib/ToastContext";
 import Sheet from "./Sheet";
 
+// Sammanhållen yta för rader, samma stil som listvyn
+const groupBox = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden" };
+
 export default function Dashboard({ familyId, family, user, onOpenTab }) {
   const [lists, setLists] = useState([]);
   const [events, setEvents] = useState([]);
@@ -211,11 +214,11 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
       {/* Till dig */}
       {assignedToMe.length > 0 && (
         <Section title="Till dig">
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {assignedToMe.map((item) => (
+          <div style={groupBox}>
+            {assignedToMe.map((item, i) => (
               <div
                 key={item.id}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--line)" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface)", borderBottom: i < assignedToMe.length - 1 ? "1px solid var(--line-soft)" : "none" }}
               >
                 <button
                   onClick={() => { haptics.light(); toggleItem(item); }}
@@ -240,9 +243,9 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
       {/* Idag-händelser */}
       {todayEvents.length > 0 && (
         <Section title="Idag" onSeeAll={() => onOpenTab(2)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={groupBox}>
             {todayEvents.map((evt, i) => (
-              <EventRow key={`${evt.id}-${i}`} event={evt} />
+              <EventRow key={`${evt.id}-${i}`} event={evt} divider={i < todayEvents.length - 1} />
             ))}
           </div>
         </Section>
@@ -251,34 +254,35 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
       {/* Förfaller-uppgifter */}
       {todoToday.length > 0 && (
         <Section title="Behöver göras" onSeeAll={() => onOpenTab(1)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {todoToday.slice(0, 5).map((item) => (
+          <div style={groupBox}>
+            {todoToday.slice(0, 5).map((item, i) => (
               <TodoRow
                 key={item.id}
                 item={item}
+                divider={i < Math.min(todoToday.length, 5) - 1}
                 onToggle={() =>
                   toggleListItem(familyId, lists.find((l) => l.id === item.listId), item.id, user)
                 }
               />
             ))}
-            {todoToday.length > 5 && (
-              <button
-                onClick={() => onOpenTab(1)}
-                style={{ background: "none", border: "none", color: "var(--coral)", fontSize: 13, fontWeight: 600, padding: 8, cursor: "pointer" }}
-              >
-                +{todoToday.length - 5} till →
-              </button>
-            )}
           </div>
+          {todoToday.length > 5 && (
+            <button
+              onClick={() => onOpenTab(1)}
+              style={{ background: "none", border: "none", color: "var(--coral)", fontSize: 13, fontWeight: 600, padding: "10px 8px 0", cursor: "pointer" }}
+            >
+              +{todoToday.length - 5} till →
+            </button>
+          )}
         </Section>
       )}
 
       {/* Kommande händelser */}
       {upcomingEvents.length > 0 && (
         <Section title="Snart" onSeeAll={() => onOpenTab(2)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={groupBox}>
             {upcomingEvents.map((evt, i) => (
-              <EventRow key={`${evt.id}-${i}`} event={evt} showDate />
+              <EventRow key={`${evt.id}-${i}`} event={evt} showDate divider={i < upcomingEvents.length - 1} />
             ))}
           </div>
         </Section>
@@ -287,9 +291,9 @@ export default function Dashboard({ familyId, family, user, onOpenTab }) {
       {/* Senaste aktivitet */}
       {activity.length > 0 && (
         <Section title="Senaste händer" onSeeAll={() => onOpenTab(4)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {activity.slice(0, 3).map((item) => (
-              <ActivityPreview key={item.id} item={item} />
+          <div style={groupBox}>
+            {activity.slice(0, 3).map((item, i) => (
+              <ActivityPreview key={item.id} item={item} divider={i < Math.min(activity.length, 3) - 1} />
             ))}
           </div>
         </Section>
@@ -430,7 +434,7 @@ function StatCard({ label, value, icon, highlight, onClick }) {
   );
 }
 
-function EventRow({ event, showDate }) {
+function EventRow({ event, showDate, divider }) {
   return (
     <div
       style={{
@@ -439,8 +443,7 @@ function EventRow({ event, showDate }) {
         gap: 12,
         padding: "12px 14px",
         background: "var(--surface)",
-        borderRadius: 12,
-        border: "1px solid var(--line)",
+        borderBottom: divider ? "1px solid var(--line-soft)" : "none",
       }}
     >
       <div style={{ width: 4, height: 32, borderRadius: 4, background: event.color, flexShrink: 0 }} />
@@ -458,7 +461,7 @@ function EventRow({ event, showDate }) {
   );
 }
 
-function TodoRow({ item, onToggle }) {
+function TodoRow({ item, onToggle, divider }) {
   const overdue = item.dueDate && item.dueDate < new Date().toISOString().slice(0, 10);
   const assigneeColor = item.assignedTo ? nameColor(item.assignedTo) : null;
   return (
@@ -469,8 +472,7 @@ function TodoRow({ item, onToggle }) {
         gap: 12,
         padding: "12px 14px",
         background: "var(--surface)",
-        borderRadius: 12,
-        border: `1px solid ${overdue ? "var(--coral)" : "var(--line)"}`,
+        borderBottom: divider ? "1px solid var(--line-soft)" : "none",
       }}
     >
       <button
@@ -478,8 +480,8 @@ function TodoRow({ item, onToggle }) {
         style={{
           width: 24,
           height: 24,
-          borderRadius: 7,
-          border: "2px solid var(--muted-soft)",
+          borderRadius: "50%",
+          border: `2px solid ${overdue ? "var(--coral)" : "var(--muted-soft)"}`,
           background: "transparent",
           cursor: "pointer",
           padding: 0,
@@ -525,10 +527,10 @@ function TodoRow({ item, onToggle }) {
   );
 }
 
-function ActivityPreview({ item }) {
+function ActivityPreview({ item, divider }) {
   const color = nameColor(item.by?.name || "");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--line)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: "var(--surface)", borderBottom: divider ? "1px solid var(--line-soft)" : "none" }}>
       <div style={{ width: 28, height: 28, borderRadius: "50%", background: color.soft, color: color.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
         {item.emoji}
       </div>
